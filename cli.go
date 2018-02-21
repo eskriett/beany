@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -234,7 +235,8 @@ func (c *cli) addListTubesCmd() {
 			table.SetBorder(false)
 			cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
 
-			for tube, stats := range tubes {
+			for _, tube := range sortedMapKeys(tubes) {
+				stats := tubes[tube]
 				table.Append([]string{
 					cyan(tube),
 					color.GreenString(stats["current-jobs-ready"]),
@@ -450,11 +452,11 @@ func (c *cli) setPrompt() {
 	c.shell.SetPrompt(prompt)
 }
 
-func sortedMapKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func sortedMapKeys(m interface{}) (sorted []string) {
+	keys := reflect.ValueOf(m).MapKeys()
+	for _, k := range keys {
+		sorted = append(sorted, k.Interface().(string))
 	}
-	sort.Strings(keys)
-	return keys
+	sort.Strings(sorted)
+	return
 }
