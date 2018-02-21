@@ -92,9 +92,23 @@ A tube argument can also be provided, otherwise uses the current active tube:
 This command is available via the 'pr' alias
 ```
 
+### History
+
 `beany` maintains a persistent history, this can be found at `~/.beany_history`.
 
+### Colours
+
 Coloured output can be disabled with `beany --boring`
+
+### Pager
+
+By default beany will use whatever the `$PAGER` environment variable is
+configured to, otherwise it will default to `less -R`. For example to run
+`beany` with `more` run:
+
+```
+$ PAGER=more beany
+```
 
 ## License
 

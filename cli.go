@@ -23,7 +23,14 @@ type cli struct {
 
 func NewCli() *cli {
 	shell := ishell.New()
-	shell.SetPager("less", []string{"-R"})
+
+	if pager := os.Getenv("PAGER"); pager != "" {
+		pagerArgs := strings.Split(pager, " ")
+		shell.SetPager(pagerArgs[0], pagerArgs[1:])
+	} else {
+		shell.SetPager("less", []string{"-R"})
+	}
+
 	shell.SetHomeHistoryPath(".beany_history")
 
 	server := server{}
