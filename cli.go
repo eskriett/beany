@@ -35,7 +35,7 @@ func NewCli() *cli {
 	cli.addDisconnectCmd()
 	cli.addInfoCmd()
 	cli.addKickCmd()
-	cli.addListTubeCmd()
+	cli.addListTubesCmd()
 	cli.addStatsCmd()
 	cli.addStatsTubeCmd()
 	cli.addUseTubeCmd()
@@ -56,21 +56,9 @@ func NewCli() *cli {
 
 func (c *cli) addConnectCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: "connect",
-		Help: "connects to a beanstalk server",
-		LongHelp: `Connects to a beanstalk server. With no arguments, will try
-to connect to the 127.0.0.1:11300. Can also provide host and port arguments.
-
-To connect to a beanstalk server on <HOST> using port 11300:
-
-  connect <HOST>
-
-To connect to a beanstalk server on <HOST> using port <PORT>:
-
-  connect <HOST> <PORT>
-
-Will error if a connection cannot be established
-`,
+		Name:     "connect",
+		Help:     "connects to a beanstalk server",
+		LongHelp: helpConnect,
 		Func: func(i *ishell.Context) {
 			var host string
 			var port int
@@ -104,9 +92,10 @@ Will error if a connection cannot be established
 
 func (c *cli) addDeleteCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    "delete",
-		Aliases: []string{"del", "dj"},
-		Help:    "delete a job",
+		Name:     "delete",
+		Aliases:  []string{"del", "dj"},
+		Help:     "delete a job",
+		LongHelp: helpDelete,
 		Func: func(i *ishell.Context) {
 			var toDeleteStr string
 			if len(i.Args) == 1 {
@@ -138,8 +127,10 @@ func (c *cli) addDeleteCmd() {
 
 func (c *cli) addDeleteAllCmd(state string) {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: fmt.Sprintf("delete-%s", state),
-		Help: fmt.Sprintf("deletes all %s jobs on the current tube", state),
+		Name:     fmt.Sprintf("delete-%s", state),
+		Aliases:  []string{fmt.Sprintf("d%c", state[0])},
+		Help:     fmt.Sprintf("deletes all %s jobs on the current tube", state),
+		LongHelp: fmt.Sprintf(helpDeleteAll, state, state, state[0]),
 		Completer: func([]string) []string {
 			return c.server.ListTubes()
 		},
@@ -150,7 +141,8 @@ func (c *cli) addDeleteAllCmd(state string) {
 				return
 			}
 
-			msg := fmt.Sprintf("Are you sure you want to delete all %s jobs", state)
+			msg := fmt.Sprintf("Are you sure you want to delete all %s jobs from the %s tube",
+				state, tube)
 			if !getConfirmation(msg, i) {
 				return
 			}
@@ -166,8 +158,9 @@ func (c *cli) addDeleteAllCmd(state string) {
 
 func (c *cli) addDisconnectCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: "disconnect",
-		Help: "disconnects from the beanstalk server",
+		Name:     "disconnect",
+		Help:     "disconnects from the beanstalk server",
+		LongHelp: helpDisconnect,
 		Func: func(i *ishell.Context) {
 			if err := c.server.Disconnect(); err != nil {
 				outputError(err, i)
@@ -179,8 +172,9 @@ func (c *cli) addDisconnectCmd() {
 
 func (c *cli) addInfoCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: "info",
-		Help: "info about the current connection",
+		Name:     "info",
+		Help:     "info about the current connection",
+		LongHelp: helpInfo,
 		Func: func(i *ishell.Context) {
 			outputConnectionInfo(c, i)
 		},
@@ -189,9 +183,9 @@ func (c *cli) addInfoCmd() {
 
 func (c *cli) addKickCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    "kick",
-		Aliases: []string{"k"},
-		Help:    "kick jobs from the current tube",
+		Name:     "kick",
+		Help:     "kick jobs from the current tube",
+		LongHelp: helpKick,
 		Func: func(i *ishell.Context) {
 			tube := c.server.CurrentTubeName()
 
@@ -225,11 +219,12 @@ func (c *cli) addKickCmd() {
 	})
 }
 
-func (c *cli) addListTubeCmd() {
+func (c *cli) addListTubesCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    "list-tubes",
-		Aliases: []string{"lt", "list"},
-		Help:    "lists tubes",
+		Name:     "list-tubes",
+		Aliases:  []string{"lt", "list"},
+		Help:     "lists tubes",
+		LongHelp: helpListTubes,
 		Func: func(i *ishell.Context) {
 			tubes := c.server.GetTubeStats()
 
@@ -256,17 +251,10 @@ func (c *cli) addListTubeCmd() {
 
 func (c *cli) addPeekCmd(state string) {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    fmt.Sprintf("peek-%s", state),
-		Aliases: []string{fmt.Sprintf("p%c", state[0])},
-		Help:    fmt.Sprintf("peek at %s jobs", state),
-		LongHelp: fmt.Sprintf(`Looks at the job at the front of the %s queue.
-
-A tube argument can also be provided, otherwise uses the current active tube:
-
-  peek-%s <TUBE>
-
-This command is available via the 'p%c' alias
-        `, state, state, state[0]),
+		Name:     fmt.Sprintf("peek-%s", state),
+		Aliases:  []string{fmt.Sprintf("p%c", state[0])},
+		Help:     fmt.Sprintf("peek at %s jobs", state),
+		LongHelp: fmt.Sprintf(helpPeek, state, state, state[0]),
 		Completer: func([]string) []string {
 			return c.server.ListTubes()
 		},
@@ -292,8 +280,9 @@ This command is available via the 'p%c' alias
 
 func (c *cli) addStatsCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: "stats",
-		Help: "display server statistics",
+		Name:     "stats",
+		Help:     "display server statistics",
+		LongHelp: helpStats,
 		Func: func(i *ishell.Context) {
 			stats, err := c.server.bs.Stats()
 			if err != nil {
@@ -313,9 +302,10 @@ func (c *cli) addStatsCmd() {
 
 func (c *cli) addStatsTubeCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    "stats-tube",
-		Aliases: []string{"st"},
-		Help:    "stats the current tube",
+		Name:     "stats-tube",
+		Aliases:  []string{"st"},
+		Help:     "stats the current tube",
+		LongHelp: helpStatsTube,
 		Completer: func([]string) []string {
 			return c.server.ListTubes()
 		},
@@ -342,9 +332,10 @@ func (c *cli) addStatsTubeCmd() {
 
 func (c *cli) addUseTubeCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:    "use",
-		Aliases: []string{"ut", "use-tube"},
-		Help:    "use a tube",
+		Name:     "use",
+		Aliases:  []string{"ut"},
+		Help:     "use a tube",
+		LongHelp: helpUse,
 		Completer: func([]string) []string {
 			return c.server.ListTubes()
 		},
@@ -367,8 +358,9 @@ func (c *cli) addUseTubeCmd() {
 
 func (c *cli) addVersionCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name: "version",
-		Help: "display version information",
+		Name:     "version",
+		Help:     "display version information",
+		LongHelp: helpVersion,
 		Func: func(i *ishell.Context) {
 			outputInfo("beany version: "+Version, i)
 		},
