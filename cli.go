@@ -284,7 +284,7 @@ func (c *cli) addStatsCmd() {
 		Help:     "display server statistics",
 		LongHelp: helpStats,
 		Func: func(i *ishell.Context) {
-			stats, err := c.server.bs.Stats()
+			stats, err := c.server.Stats()
 			if err != nil {
 				outputError(err, i)
 				return

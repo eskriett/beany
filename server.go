@@ -141,6 +141,10 @@ func (s *server) Peek(state, name string) (uint64, []byte, error) {
 	return id, body, err
 }
 
+func (s *server) Stats() (map[string]string, error) {
+	return s.bs.Stats()
+}
+
 func (s *server) StatsTube(name string) (map[string]string, error) {
 	tube := beanstalk.Tube{s.bs, name}
 	return tube.Stats()
