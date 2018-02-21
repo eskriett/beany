@@ -4,6 +4,8 @@ Beany is an interactive command-line client for
 [beanstalkd](https://github.com/kr/beanstalkd) written in
 [Go](https://golang.org/)
 
+![Screenshot](/screenshots/beany.png)
+
 ## Features
 
 * Persistent history
