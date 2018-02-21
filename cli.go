@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"reflect"
 	"sort"
 	"strconv"
@@ -44,6 +46,7 @@ func NewCli() *cli {
 	cli.addInfoCmd()
 	cli.addKickCmd()
 	cli.addListTubesCmd()
+	cli.addPutCmd()
 	cli.addStatsCmd()
 	cli.addStatsTubeCmd()
 	cli.addUseTubeCmd()
@@ -282,6 +285,70 @@ func (c *cli) addPeekCmd(state string) {
 					cyan(fmt.Sprintf("Job #%v", id)),
 					string(body))
 				outputPaged(details, i)
+			}
+		},
+	})
+}
+
+func (c *cli) addPutCmd() {
+	c.shell.AddCmd(&ishell.Cmd{
+		Name:     "put",
+		Help:     "puts data on the current tube",
+		LongHelp: helpPut,
+		Completer: func([]string) []string {
+			return c.server.ListTubes()
+		},
+		Func: func(i *ishell.Context) {
+			tube, err := getTubeFromArgs(c, i)
+			if err != nil {
+				outputError(err, i)
+				return
+			}
+
+			temp, err := ioutil.TempFile(os.TempDir(), "beany")
+			if err != nil {
+				outputError(err, i)
+				return
+			}
+			defer os.Remove(temp.Name())
+
+			var cmd *exec.Cmd
+
+			if editor := os.Getenv("EDITOR"); editor != "" {
+				editorArgs := strings.Split(editor, " ")
+				editorArgs = append(editorArgs, temp.Name())
+				cmd = exec.Command(editorArgs[0], editorArgs[1:]...)
+			} else {
+				cmd = exec.Command("vi", temp.Name())
+			}
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+
+			if err := cmd.Start(); err != nil {
+				outputError(err, i)
+				return
+			}
+			if err := cmd.Wait(); err != nil {
+				outputError(err, i)
+				return
+			}
+
+			job, err := ioutil.ReadFile(temp.Name())
+			if err != nil {
+				outputError(err, i)
+				return
+			}
+
+			if len(job) == 0 {
+				outputError(errors.New("No data in job, not adding to tube"), i)
+				return
+			}
+
+			if id, err := c.server.Put(job, tube); err != nil {
+				outputError(err, i)
+			} else {
+				outputInfo(fmt.Sprintf("Put job (#%d) onto %s", id, tube), i)
 			}
 		},
 	})

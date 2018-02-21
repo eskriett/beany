@@ -141,6 +141,12 @@ func (s *server) Peek(state, name string) (uint64, []byte, error) {
 	return id, body, err
 }
 
+// TODO allow jobs options to be passed
+func (s *server) Put(body []byte, name string) (uint64, error) {
+	tube := beanstalk.Tube{s.bs, name}
+	return tube.Put(body, 1, 0, 180)
+}
+
 func (s *server) Stats() (map[string]string, error) {
 	return s.bs.Stats()
 }

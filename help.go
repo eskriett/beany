@@ -51,6 +51,14 @@ A tube argument can also be provided, otherwise uses the current active tube:
 
 This command is available via the 'p%c' alias`
 
+	helpPut = `Opens an editor and allows data to be put onto the current tube. Alternatively
+a tube can be provided:
+
+  put <TUBE>
+
+Will first attempt to open an editor defined with the $EDITOR environment
+variable, otherwise defaults to vi.`
+
 	helpStats = `Displays statistics for the connected beanstalk server`
 
 	helpStatsTube = `Displays stats for the current tube. Alternatively a tube argument can be

@@ -15,7 +15,7 @@ Beany is an interactive command-line client for
 
 Still in early development, features are likely to change. Roadmap:
 
-* [ ] Ensure all beanstalk commands are supported (inc. put)
+* [ ] Ensure all beanstalk commands are supported
 * [ ] Improve documentation
 * [ ] Tests
 * [ ] Package
