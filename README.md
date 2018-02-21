@@ -72,6 +72,7 @@ Commands:
   peek-buried         peek at buried jobs
   peek-delayed        peek at delayed jobs
   peek-ready          peek at ready jobs
+  put                 puts data on the current tube
   stats               display server statistics
   stats-tube          stats the current tube
   use                 use a tube
@@ -102,12 +103,22 @@ Coloured output can be disabled with `beany --boring`
 
 ### Pager
 
-By default beany will use whatever the `$PAGER` environment variable is
+By default `beany` will use whatever the `$PAGER` environment variable is
 configured to, otherwise it will default to `less -R`. For example to run
 `beany` with `more` run:
 
 ```
 $ PAGER=more beany
+```
+
+### Editor
+
+When use the `put` command `beany` will first look for the editor defined by the
+`$EDITOR` envrionment variable. If this cannot be found, `beany` will fallback
+to using `vi`. For example, to run `beany` with `nano`:
+
+```
+$ EDITOR=nano beany
 ```
 
 ## License
