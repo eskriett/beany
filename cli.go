@@ -447,7 +447,7 @@ func getConfirmation(msg string, i *ishell.Context) bool {
 	i.ShowPrompt(false)
 	defer i.ShowPrompt(true)
 
-	i.Println(msg + " [yn]?")
+	i.Print(msg + " [yn]? ")
 	choice := strings.ToLower(i.ReadLine())
 
 	if choice == "y" || choice == "yes" {
