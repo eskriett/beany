@@ -151,6 +151,10 @@ func (s *server) Stats() (map[string]string, error) {
 	return s.bs.Stats()
 }
 
+func (s *server) StatsJob(id uint64) (map[string]string, error) {
+	return s.bs.StatsJob(id)
+}
+
 func (s *server) StatsTube(name string) (map[string]string, error) {
 	tube := beanstalk.Tube{s.bs, name}
 	return tube.Stats()

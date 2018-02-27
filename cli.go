@@ -48,6 +48,7 @@ func NewCli() *cli {
 	cli.addListTubesCmd()
 	cli.addPutCmd()
 	cli.addStatsCmd()
+	cli.addStatsJobCmd()
 	cli.addStatsTubeCmd()
 	cli.addUseTubeCmd()
 	cli.addVersionCmd()
@@ -372,6 +373,41 @@ func (c *cli) addStatsCmd() {
 				sb.WriteString(fmt.Sprintf("%s: %s\n", cyan(key), stats[key]))
 			}
 			outputPaged(sb.String(), i)
+		},
+	})
+}
+
+func (c *cli) addStatsJobCmd() {
+	c.shell.AddCmd(&ishell.Cmd{
+		Name:     "stats-job",
+		Aliases:  []string{"sj"},
+		Help:     "prints the stats for a job",
+		LongHelp: helpStatsJob,
+		Func: func(i *ishell.Context) {
+			var toStatStr string
+			if len(i.Args) == 1 {
+				toStatStr = i.Args[0]
+			} else {
+				outputError(errors.New("Wrong number of arguments provided"), i)
+				return
+			}
+
+			toStat, err := strconv.ParseUint(toStatStr, 10, 64)
+			if err != nil {
+				outputError(err, i)
+				return
+			}
+
+			if stats, err := c.server.StatsJob(toStat); err != nil {
+				outputError(err, i)
+			} else {
+				cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
+				var sb strings.Builder
+				for _, key := range sortedMapKeys(stats) {
+					sb.WriteString(fmt.Sprintf("%s: %s\n", cyan(key), stats[key]))
+				}
+				outputPaged(sb.String(), i)
+			}
 		},
 	})
 }

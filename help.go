@@ -61,6 +61,12 @@ variable, otherwise defaults to vi.`
 
 	helpStats = `Displays statistics for the connected beanstalk server`
 
+	helpStatsJob = `Displays statistics for the specified job:
+
+  stats-job <JOB>
+
+This command is available via the 'sj' alias`
+
 	helpStatsTube = `Displays stats for the current tube. Alternatively a tube argument can be
 provided:
 
