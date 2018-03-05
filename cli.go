@@ -94,6 +94,7 @@ func (c *cli) addConnectCmd() {
 
 			if err := c.server.Connect(host, port); err != nil {
 				outputError(err, i)
+				return
 			}
 
 			outputConnectionInfo(c, i)
