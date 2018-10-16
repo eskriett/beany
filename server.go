@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
+	"time"
 
 	"github.com/kr/beanstalk"
 )
@@ -23,10 +25,13 @@ func (s *server) connect() (err error) {
 		s.port = 11300
 	}
 
-	s.bs, err = beanstalk.Dial("tcp", fmt.Sprintf("%s:%d", s.host, s.port))
-	if err == nil {
-		s.connected = true
+	c, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", s.host, s.port), time.Second*5)
+	if err != nil {
+		return err
 	}
+	s.bs = beanstalk.NewConn(c)
+	s.connected = true
+
 	return
 }
 
@@ -52,9 +57,14 @@ func (s *server) CurrentTube() *beanstalk.Tube {
 	return &s.bs.Tube
 }
 
-func (s *server) CurrentTubeName() string {
+func (s *server) CurrentTubeName() (string, error) {
+
+	if !s.connected {
+		return "", errors.New("Can't determine current tube, not connected to a beanstalk server")
+	}
+
 	currentTube := s.CurrentTube()
-	return currentTube.Name
+	return currentTube.Name, nil
 }
 
 func (s *server) Delete(toDelete uint64) error {
@@ -62,7 +72,10 @@ func (s *server) Delete(toDelete uint64) error {
 }
 
 func (s *server) DeleteAll(state, name string) (int, error) {
-	tube := beanstalk.Tube{s.bs, name}
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 
 	var (
 		err error
@@ -89,22 +102,35 @@ func (s *server) DeleteAll(state, name string) (int, error) {
 
 		n++
 	}
-
-	return n, err
 }
 
 func (s *server) Disconnect() error {
+
+	if !s.connected {
+		return errors.New("Can't disconnect, not connected to a beanstalk server")
+	}
+
 	s.connected = false
 	return s.bs.Close()
 }
 
-func (s *server) GetTubeStats() map[string]map[string]string {
-	var tubes = map[string]map[string]string{}
-	for _, tube := range s.ListTubes() {
-		stats, _ := s.StatsTube(tube)
-		tubes[tube] = stats
+func (s *server) GetTubeStats() (map[string]map[string]string, error) {
+
+	if !s.connected {
+		return nil, errors.New("Can't get tube stats, not connected to a beanstalk server")
 	}
-	return tubes
+
+	tubes, err := s.ListTubes()
+	if err != nil {
+		return nil, err
+	}
+
+	var tubeStats = map[string]map[string]string{}
+	for _, tube := range tubes {
+		stats, _ := s.StatsTube(tube)
+		tubeStats[tube] = stats
+	}
+	return tubeStats, nil
 }
 
 func (s *server) isConnected() bool {
@@ -112,17 +138,40 @@ func (s *server) isConnected() bool {
 }
 
 func (s *server) Kick(name string, toKick int) (int, error) {
-	tube := beanstalk.Tube{s.bs, name}
+
+	if !s.connected {
+		return 0, errors.New("Can't kick, not connected to a beanstalk server")
+	}
+
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 	return tube.Kick(toKick)
 }
 
-func (s *server) ListTubes() []string {
-	tubes, _ := s.bs.ListTubes()
-	return tubes
+func (s *server) ListTubes() ([]string, error) {
+
+	if !s.connected {
+		return nil, errors.New("Can't list tubes, not connected to a beanstalk server")
+	}
+
+	tubes, err := s.bs.ListTubes()
+	if err != nil {
+		return nil, err
+	}
+	return tubes, nil
 }
 
 func (s *server) Peek(state, name string) (uint64, []byte, error) {
-	tube := beanstalk.Tube{s.bs, name}
+	if !s.connected {
+		return 0, nil, errors.New("Can't peek, not connected to a beanstalk server")
+	}
+
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 
 	var (
 		id   uint64
@@ -143,24 +192,48 @@ func (s *server) Peek(state, name string) (uint64, []byte, error) {
 
 // TODO allow jobs options to be passed
 func (s *server) Put(body []byte, name string) (uint64, error) {
-	tube := beanstalk.Tube{s.bs, name}
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 	return tube.Put(body, 1, 0, 180)
 }
 
 func (s *server) Stats() (map[string]string, error) {
+
+	if !s.connected {
+		return nil, errors.New("Can't provide stats, not connected to a beanstalk server")
+	}
+
 	return s.bs.Stats()
 }
 
 func (s *server) StatsJob(id uint64) (map[string]string, error) {
+
+	if !s.connected {
+		return nil, errors.New("Can't stats job, not connected to a beanstalk server")
+	}
+
 	return s.bs.StatsJob(id)
 }
 
 func (s *server) StatsTube(name string) (map[string]string, error) {
-	tube := beanstalk.Tube{s.bs, name}
+
+	if !s.connected {
+		return nil, errors.New("Can't stats tubes, not connected to a beanstalk server")
+	}
+
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 	return tube.Stats()
 }
 
 func (s *server) UseTube(name string) {
-	newTube := beanstalk.Tube{s.bs, name}
+	newTube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
 	s.bs.Tube = newTube
 }

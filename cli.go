@@ -18,6 +18,10 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+const (
+	historyFile = ".beany_history"
+)
+
 type cli struct {
 	server *server
 	shell  *ishell.Shell
@@ -33,7 +37,7 @@ func NewCli() *cli {
 		shell.SetPager("less", []string{"-R"})
 	}
 
-	shell.SetHomeHistoryPath(".beany_history")
+	shell.SetHomeHistoryPath(historyFile)
 
 	server := server{}
 	server.connect()
@@ -125,7 +129,7 @@ func (c *cli) addDeleteCmd() {
 			}
 
 			msg := fmt.Sprintf("Are you sure you want to delete job #%v", toDelete)
-			if !getConfirmation(msg, i) {
+			if !c.getConfirmation(msg, i) {
 				return
 			}
 
@@ -140,13 +144,11 @@ func (c *cli) addDeleteCmd() {
 
 func (c *cli) addDeleteAllCmd(state string) {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:     fmt.Sprintf("delete-%s", state),
-		Aliases:  []string{fmt.Sprintf("d%c", state[0])},
-		Help:     fmt.Sprintf("deletes all %s jobs on the current tube", state),
-		LongHelp: fmt.Sprintf(helpDeleteAll, state, state, state[0]),
-		Completer: func([]string) []string {
-			return c.server.ListTubes()
-		},
+		Name:      fmt.Sprintf("delete-%s", state),
+		Aliases:   []string{fmt.Sprintf("d%c", state[0])},
+		Help:      fmt.Sprintf("deletes all %s jobs on the current tube", state),
+		LongHelp:  fmt.Sprintf(helpDeleteAll, state, state, state[0]),
+		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			tube, err := getTubeFromArgs(c, i)
 			if err != nil {
@@ -156,7 +158,7 @@ func (c *cli) addDeleteAllCmd(state string) {
 
 			msg := fmt.Sprintf("Are you sure you want to delete all %s jobs from the %s tube",
 				state, tube)
-			if !getConfirmation(msg, i) {
+			if !c.getConfirmation(msg, i) {
 				return
 			}
 
@@ -200,7 +202,11 @@ func (c *cli) addKickCmd() {
 		Help:     "kick jobs from the current tube",
 		LongHelp: helpKick,
 		Func: func(i *ishell.Context) {
-			tube := c.server.CurrentTubeName()
+			tube, err := c.server.CurrentTubeName()
+			if err != nil {
+				outputError(err, i)
+				return
+			}
 
 			var toKickStr string
 			if len(i.Args) == 0 {
@@ -239,7 +245,11 @@ func (c *cli) addListTubesCmd() {
 		Help:     "lists tubes",
 		LongHelp: helpListTubes,
 		Func: func(i *ishell.Context) {
-			tubes := c.server.GetTubeStats()
+			tubes, err := c.server.GetTubeStats()
+			if err != nil {
+				outputError(err, i)
+				return
+			}
 
 			var output bytes.Buffer
 			table := tablewriter.NewWriter(&output)
@@ -265,13 +275,11 @@ func (c *cli) addListTubesCmd() {
 
 func (c *cli) addPeekCmd(state string) {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:     fmt.Sprintf("peek-%s", state),
-		Aliases:  []string{fmt.Sprintf("p%c", state[0])},
-		Help:     fmt.Sprintf("peek at %s jobs", state),
-		LongHelp: fmt.Sprintf(helpPeek, state, state, state[0]),
-		Completer: func([]string) []string {
-			return c.server.ListTubes()
-		},
+		Name:      fmt.Sprintf("peek-%s", state),
+		Aliases:   []string{fmt.Sprintf("p%c", state[0])},
+		Help:      fmt.Sprintf("peek at %s jobs", state),
+		LongHelp:  fmt.Sprintf(helpPeek, state, state, state[0]),
+		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			tube, err := getTubeFromArgs(c, i)
 			if err != nil {
@@ -294,12 +302,10 @@ func (c *cli) addPeekCmd(state string) {
 
 func (c *cli) addPutCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:     "put",
-		Help:     "puts data on the current tube",
-		LongHelp: helpPut,
-		Completer: func([]string) []string {
-			return c.server.ListTubes()
-		},
+		Name:      "put",
+		Help:      "puts data on the current tube",
+		LongHelp:  helpPut,
+		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			tube, err := getTubeFromArgs(c, i)
 			if err != nil {
@@ -415,13 +421,11 @@ func (c *cli) addStatsJobCmd() {
 
 func (c *cli) addStatsTubeCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:     "stats-tube",
-		Aliases:  []string{"st"},
-		Help:     "stats the current tube",
-		LongHelp: helpStatsTube,
-		Completer: func([]string) []string {
-			return c.server.ListTubes()
-		},
+		Name:      "stats-tube",
+		Aliases:   []string{"st"},
+		Help:      "stats the current tube",
+		LongHelp:  helpStatsTube,
+		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			tube, err := getTubeFromArgs(c, i)
 			if err != nil {
@@ -445,13 +449,11 @@ func (c *cli) addStatsTubeCmd() {
 
 func (c *cli) addUseTubeCmd() {
 	c.shell.AddCmd(&ishell.Cmd{
-		Name:     "use",
-		Aliases:  []string{"ut"},
-		Help:     "use a tube",
-		LongHelp: helpUse,
-		Completer: func([]string) []string {
-			return c.server.ListTubes()
-		},
+		Name:      "use",
+		Aliases:   []string{"ut"},
+		Help:      "use a tube",
+		LongHelp:  helpUse,
+		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			if len(i.Args) == 0 {
 				outputError(errors.New("Tube required"), i)
@@ -480,9 +482,12 @@ func (c *cli) addVersionCmd() {
 	})
 }
 
-func getConfirmation(msg string, i *ishell.Context) bool {
+func (c *cli) getConfirmation(msg string, i *ishell.Context) bool {
 	i.ShowPrompt(false)
+	defer c.shell.SetHomeHistoryPath(historyFile)
 	defer i.ShowPrompt(true)
+
+	c.shell.SetHistoryPath("")
 
 	i.Print(msg + " [yn]? ")
 	choice := strings.ToLower(i.ReadLine())
@@ -500,12 +505,22 @@ func getConfirmation(msg string, i *ishell.Context) bool {
 func getTubeFromArgs(c *cli, i *ishell.Context) (string, error) {
 
 	if len(i.Args) == 0 {
-		return c.server.CurrentTubeName(), nil
+		return c.server.CurrentTubeName()
 	} else if len(i.Args) == 1 {
 		return i.Args[0], nil
 	}
 
 	return "", errors.New("Too many arguments provided")
+}
+
+func (c *cli) listTubes([]string) []string {
+
+	tubes, err := c.server.ListTubes()
+	if err != nil {
+		return nil
+	}
+
+	return tubes
 }
 
 func outputConnectionInfo(c *cli, i *ishell.Context) {
@@ -551,7 +566,7 @@ func (c *cli) setPrompt() {
 
 	var prompt string
 	if c.server.isConnected() {
-		tube := c.server.CurrentTubeName()
+		tube, _ := c.server.CurrentTubeName()
 
 		prompt = fmt.Sprintf("%s%s%s",
 			yellow("["), boldMagenta(tube), yellow("] >>> "))
