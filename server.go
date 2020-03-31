@@ -90,7 +90,7 @@ func (s *server) DeleteAll(state, name string) (int, error) {
 		case "buried":
 			id, _, err = tube.PeekBuried()
 		case "delayed":
-			id, _, err = tube.PeekReady()
+			id, _, err = tube.PeekDelayed()
 		}
 		if err != nil {
 			return n, err
