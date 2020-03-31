@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 
 	"github.com/fatih/color"
@@ -10,7 +11,7 @@ import (
 const Version = "0.0.1"
 
 func main() {
-	var flagNoColor = flag.Bool("boring", false, "Disable color output")
+	flagNoColor := flag.Bool("boring", false, "Disable color output")
 	flag.Parse()
 
 	if *flagNoColor || len(os.Args) > 1 {
@@ -20,7 +21,9 @@ func main() {
 	cli := NewCli()
 
 	if len(os.Args) > 1 {
-		cli.shell.Process(os.Args[1:]...)
+		if err := cli.shell.Process(os.Args[1:]...); err != nil {
+			log.Fatal(err)
+		}
 	} else {
 		cli.Run()
 	}

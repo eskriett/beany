@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"reflect"
@@ -63,7 +64,9 @@ func NewCli() *cli {
 	}
 
 	if len(os.Args) == 1 {
-		shell.Process("info")
+		if err := shell.Process("info"); err != nil {
+			log.Fatal(err)
+		}
 	}
 	cli.setPrompt()
 
@@ -92,7 +95,7 @@ func (c *cli) addConnectCmd() {
 					return
 				}
 			} else {
-				outputError(errors.New("Too many arguments"), i)
+				outputError(errors.New("too many arguments"), i)
 				return
 			}
 
@@ -118,7 +121,7 @@ func (c *cli) addDeleteCmd() {
 			if len(i.Args) == 1 {
 				toDeleteStr = i.Args[0]
 			} else {
-				outputError(errors.New("Wrong number of arguments provided"), i)
+				outputError(errors.New("wrong number of arguments provided"), i)
 				return
 			}
 
@@ -219,7 +222,7 @@ func (c *cli) addKickCmd() {
 			} else if len(i.Args) == 1 {
 				toKickStr = i.Args[0]
 			} else {
-				outputError(errors.New("Too many arguments provided"), i)
+				outputError(errors.New("too many arguments provided"), i)
 				return
 			}
 
@@ -349,7 +352,7 @@ func (c *cli) addPutCmd() {
 			}
 
 			if len(job) == 0 {
-				outputError(errors.New("No data in job, not adding to tube"), i)
+				outputError(errors.New("no data in job, not adding to tube"), i)
 				return
 			}
 
@@ -395,7 +398,7 @@ func (c *cli) addStatsJobCmd() {
 			if len(i.Args) == 1 {
 				toStatStr = i.Args[0]
 			} else {
-				outputError(errors.New("Wrong number of arguments provided"), i)
+				outputError(errors.New("wrong number of arguments provided"), i)
 				return
 			}
 
@@ -456,7 +459,7 @@ func (c *cli) addUseTubeCmd() {
 		Completer: c.listTubes,
 		Func: func(i *ishell.Context) {
 			if len(i.Args) == 0 {
-				outputError(errors.New("Tube required"), i)
+				outputError(errors.New("tube required"), i)
 				return
 			}
 
@@ -498,23 +501,21 @@ func (c *cli) getConfirmation(msg string, i *ishell.Context) bool {
 		return false
 	}
 
-	outputError(errors.New("Not a valid choice, defaulting to 'n'"), i)
+	outputError(errors.New("not a valid choice, defaulting to 'n'"), i)
 	return false
 }
 
 func getTubeFromArgs(c *cli, i *ishell.Context) (string, error) {
-
 	if len(i.Args) == 0 {
 		return c.server.CurrentTubeName()
 	} else if len(i.Args) == 1 {
 		return i.Args[0], nil
 	}
 
-	return "", errors.New("Too many arguments provided")
+	return "", errors.New("too many arguments provided")
 }
 
 func (c *cli) listTubes([]string) []string {
-
 	tubes, err := c.server.ListTubes()
 	if err != nil {
 		return nil
@@ -551,7 +552,9 @@ func outputPaged(s string, i *ishell.Context) {
 	if numLines := strings.Count(s, "\n"); numLines < h {
 		i.Print(s)
 	} else {
-		i.ShowPaged(s)
+		if err := i.ShowPaged(s); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
