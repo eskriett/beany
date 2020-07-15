@@ -190,7 +190,7 @@ func (s *server) Put(body []byte, name string) (uint64, error) {
 		Conn: s.bs,
 		Name: name,
 	}
-	return tube.Put(body, 1, 0, 180)
+	return tube.Put(body, 1, 0, 180*time.Second)
 }
 
 func (s *server) Stats() (map[string]string, error) {
