@@ -51,6 +51,7 @@ func NewCli() *cli {
 	cli.addInfoCmd()
 	cli.addKickCmd()
 	cli.addListTubesCmd()
+	cli.addPeekJobCmd()
 	cli.addPutCmd()
 	cli.addStatsCmd()
 	cli.addStatsJobCmd()
@@ -168,7 +169,7 @@ func (c *cli) addDeleteAllCmd(state string) {
 			if n, _ := c.server.DeleteAll(state, tube); n > 0 {
 				outputInfo(fmt.Sprintf("Deleted %d %s jobs", n, state), i)
 			} else if n == 0 {
-				outputError(errors.New(fmt.Sprintf("No %s jobs deleted", state)), i)
+				outputError(fmt.Errorf("No %s jobs deleted", state), i)
 			}
 		},
 	})
@@ -272,6 +273,34 @@ func (c *cli) addListTubesCmd() {
 
 			table.Render()
 			outputPaged(output.String(), i)
+		},
+	})
+}
+
+func (c *cli) addPeekJobCmd() {
+	c.shell.AddCmd(&ishell.Cmd{
+		Name:      "peek",
+		Aliases:   []string{"p"},
+		Help:      "peek at the given job",
+		LongHelp:  helpPeekJob,
+		Completer: func(args []string) []string { return []string{} },
+		Func: func(i *ishell.Context) {
+			job, err := getJobFromArgs(c, i)
+			if err != nil {
+				outputError(err, i)
+				return
+			}
+
+			if jobDetails, err := c.server.PeekJob(job); err != nil {
+				outputError(err, i)
+			} else {
+				cyan := color.New(color.FgCyan, color.Bold).SprintFunc()
+				details := fmt.Sprintf("%s\n%s",
+					cyan(fmt.Sprintf("Job #%d\n", job)),
+					jobDetails,
+				)
+				outputPaged(details, i)
+			}
 		},
 	})
 }
@@ -503,6 +532,21 @@ func (c *cli) getConfirmation(msg string, i *ishell.Context) bool {
 
 	outputError(errors.New("not a valid choice, defaulting to 'n'"), i)
 	return false
+}
+
+func getJobFromArgs(c *cli, i *ishell.Context) (uint64, error) {
+	if len(i.Args) == 0 {
+		return 0, errors.New("too few arguments provided")
+	} else if len(i.Args) == 1 {
+		job, err := strconv.ParseUint(i.Args[0], 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("unable to parse job: %w", err)
+		}
+
+		return job, nil
+	}
+
+	return 0, errors.New("too many arguments provided")
 }
 
 func getTubeFromArgs(c *cli, i *ishell.Context) (string, error) {
