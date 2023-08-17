@@ -43,6 +43,12 @@ display tube, and details of the number of ready, delayed and buried jobs.
 
 This command is available via the 'lt' and 'list' aliases`
 
+	helpPeekJob = `Looks at the job with the given id.
+
+  peek <JOB_ID>
+
+This command is available via the 'p' alias`
+
 	helpPeek = `Looks at the job at the front of the %s queue.
 
 A tube argument can also be provided, otherwise uses the current active tube:

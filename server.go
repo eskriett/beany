@@ -185,6 +185,18 @@ func (s *server) Peek(state, name string) (uint64, []byte, error) {
 	return id, body, err
 }
 
+func (s *server) PeekJob(id uint64) ([]byte, error) {
+	if !s.connected {
+		return nil, errors.New("can't peek, not connected to a beanstalk server")
+	}
+
+	if body, err := s.bs.Peek(id); err != nil {
+		return nil, fmt.Errorf("failed to peek job: %w", err)
+	} else {
+		return body, nil
+	}
+}
+
 func (s *server) Put(body []byte, name string) (uint64, error) {
 	tube := beanstalk.Tube{
 		Conn: s.bs,
