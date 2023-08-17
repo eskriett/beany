@@ -13,22 +13,11 @@ Beany is an interactive command-line client for
 * Paged output when viewing jobs
 * Tube autocompletion for commands
 
-## Note
-
-Still in early development, features are likely to change. Roadmap:
-
-* [ ] Ensure all beanstalk commands are supported
-* [ ] Improve documentation
-* [ ] Tests
-* [ ] Package
-
 ## Installation
 
 ```
 go get github.com/eskriett/beany
 ```
-
-Requires Go 1.10+
 
 ## Usage
 
