@@ -28,7 +28,7 @@ type cli struct {
 	shell  *ishell.Shell
 }
 
-func NewCli() *cli {
+func NewCli(serverOpts ...serverOption) *cli {
 	shell := ishell.New()
 
 	if pager := os.Getenv("PAGER"); pager != "" {
@@ -40,10 +40,15 @@ func NewCli() *cli {
 
 	shell.SetHomeHistoryPath(historyFile)
 
-	server := server{}
+	server := &server{}
+
+	for _, serverOpt := range serverOpts {
+		serverOpt(server)
+	}
+
 	server.connect()
 
-	cli := cli{&server, shell}
+	cli := cli{server, shell}
 
 	cli.addConnectCmd()
 	cli.addDeleteCmd()

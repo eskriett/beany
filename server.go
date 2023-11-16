@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/kr/beanstalk"
@@ -16,6 +17,20 @@ type server struct {
 	port      int
 }
 
+type serverOption func(s *server)
+
+func WithHost(host string) serverOption {
+	return func(s *server) {
+		s.host = host
+	}
+}
+
+func WithPort(port int) serverOption {
+	return func(s *server) {
+		s.port = port
+	}
+}
+
 func (s *server) connect() (err error) {
 	if s.host == "" {
 		s.host = "127.0.0.1"
@@ -25,7 +40,9 @@ func (s *server) connect() (err error) {
 		s.port = 11300
 	}
 
-	c, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", s.host, s.port), time.Second*5)
+	address := net.JoinHostPort(s.host, strconv.Itoa(s.port))
+
+	c, err := net.DialTimeout("tcp", address, time.Second*5)
 	if err != nil {
 		return err
 	}
