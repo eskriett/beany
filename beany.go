@@ -15,6 +15,7 @@ const Version = "0.0.1"
 func main() {
 	flagNoColor := flag.Bool("boring", false, "Disable color output")
 	flagConnect := flag.String("connect", "127.0.0.1:11300", "Server to connect to")
+	flagTui     := flag.Bool("tui", false, "Enable TUI")
 	flag.Parse()
 
 	if *flagNoColor || len(os.Args) > 1 {
@@ -39,14 +40,25 @@ func main() {
 		opts = append(opts, WithPort(int(port)))
 	}
 
-	cli := NewCli(opts...)
+	server := &server{}
+
+	for _, serverOpt := range opts {
+		serverOpt(server)
+	}
+
+	server.connect()
+
+	cli := NewCli(server)
 	nonCLIArgs := flag.Args()
 
 	if len(nonCLIArgs) != 0 {
 		if err := cli.shell.Process(nonCLIArgs...); err != nil {
 			log.Fatal(err)
 		}
+	} else if *flagTui {
+		tui := NewTui(server)
+		tui.Run()
 	} else {
-		cli.Run()
+		cli.shell.Run()
 	}
 }
