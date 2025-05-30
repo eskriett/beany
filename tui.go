@@ -51,15 +51,18 @@ func NewTui(server *server) *tui {
 func (t *tui) GetFlexRow(tube string, stats map[string]string) *tview.Flex {
 	flex := tview.NewFlex()
 	flex.SetDirection(tview.FlexColumn)
-	flex.AddItem(tview.NewTextView().SetText(fmt.Sprintf("%s", tube)), t.maxTubeNameLength, 0, false)
-	flex.AddItem(tview.NewTextView().SetText(fmt.Sprintf("%s", stats["current-jobs-ready"])), GetCellWidth(stats["current-jobs-ready"]), 0, false)
-	flex.AddItem(tview.NewTextView().SetText(fmt.Sprintf("%s", stats["current-jobs-delayed"])), GetCellWidth(stats["current-jobs-delayed"]), 0, false)
-	flex.AddItem(tview.NewTextView().SetText(fmt.Sprintf("%s", stats["current-jobs-buried"])), GetCellWidth(stats["current-jobs-buried"]), 0, false)
+	flex.AddItem(tview.NewTextView().SetDynamicColors(true).SetText(fmt.Sprintf("%s", tube)), t.maxTubeNameLength, 0, false)
+	flex.AddItem(tview.NewTextView().SetDynamicColors(true).SetText(fmt.Sprintf("[:#055b02]%s", stats["current-jobs-ready"])), GetCellWidth(stats["current-jobs-ready"]), 0, false)
+	flex.AddItem(tview.NewTextView().SetDynamicColors(true).SetText(fmt.Sprintf("[:#89510d]%s", stats["current-jobs-delayed"])), GetCellWidth(stats["current-jobs-delayed"]), 0, false)
+	flex.AddItem(tview.NewTextView().SetDynamicColors(true).SetText(fmt.Sprintf("[:red]%s", stats["current-jobs-buried"])), GetCellWidth(stats["current-jobs-buried"]), 0, false)
 	return flex
 }
 
 func GetCellWidth(contents string) int {
 	val, _ := strconv.Atoi(contents)
+	if val == 0 {
+		return 0
+	}
 	ln := math.Log(float64(val))
 	return int(math.Max(float64(len(contents)), ln)) + 1
 }
