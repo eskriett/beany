@@ -15,12 +15,14 @@ type tui struct {
 	server *server
 	maxTubeNameLength int
 	cellRefs map[string]map[string]*tview.TextView
+	rowFlexes map[string]*tview.Flex
 }
 
 func NewTui(server *server) *tui {
 	t := &tui{
 		server: server,
 		maxTubeNameLength: 0,
+		rowFlexes: make(map[string]*tview.Flex),
 	}
 	app := tview.NewApplication()
 	pages := tview.NewPages()
@@ -43,7 +45,9 @@ func NewTui(server *server) *tui {
 	}
 
 	for tube, stats := range tubeStats {
-		flex.AddItem(t.BuildFlexRow(tube, stats), 1, 0, false)
+		rowFlex := t.BuildFlexRow(tube, stats)
+		t.rowFlexes[tube] = rowFlex
+		flex.AddItem(rowFlex, 1, 0, false)
 	}
 
 	t.app = app
@@ -132,10 +136,12 @@ func (t *tui) StartPeriodicUpdates() {
 }
 
 func (t *tui) UpdateRow(tube string, stats map[string]string) {
+	rowFlex := t.rowFlexes[tube]
 	for _, state := range []string{"ready", "delayed", "buried"} {
 		tv := t.cellRefs[tube][state]
-		tv.SetText(fmt.Sprintf("%s", stats[fmt.Sprintf("current-jobs-%s", state)]))
+		value := stats[fmt.Sprintf("current-jobs-%s", state)]
+		tv.SetText(fmt.Sprintf("%s", value))
 		tv.SetBackgroundColor(getStateColor(state))
-		// TODO also update the width of the cell
+		rowFlex.ResizeItem(tv, GetCellWidth(value), 0)
 	}
 }
