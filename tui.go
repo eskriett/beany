@@ -11,18 +11,21 @@ import (
 )
 
 type tui struct {
-	app *tview.Application
-	server *server
+	app               *tview.Application
+	server            *server
 	maxTubeNameLength int
-	cellRefs map[string]map[string]*tview.TextView
-	rowFlexes map[string]*tview.Flex
+	cellRefs          map[string]map[string]*tview.TextView
+	rowFlexes         map[string]*tview.Flex
+	mainFlex          *tview.Flex
+	visibleTubes      map[string]bool
 }
 
 func NewTui(server *server) *tui {
 	t := &tui{
-		server: server,
+		server:            server,
 		maxTubeNameLength: 0,
-		rowFlexes: make(map[string]*tview.Flex),
+		rowFlexes:         make(map[string]*tview.Flex),
+		visibleTubes:      make(map[string]bool),
 	}
 	app := tview.NewApplication()
 	pages := tview.NewPages()
@@ -30,6 +33,7 @@ func NewTui(server *server) *tui {
 	flex.SetDirection(tview.FlexRow)
 	flex.SetBorder(true)
 	flex.SetTitle("beany")
+	t.mainFlex = flex
 	pages.AddPage("table", flex, true, true)
 	app.SetRoot(pages, true)
 
@@ -38,7 +42,7 @@ func NewTui(server *server) *tui {
 		panic(err)
 	}
 
-	for tube, _ := range tubeStats {
+	for tube := range tubeStats {
 		if len(tube) > t.maxTubeNameLength {
 			t.maxTubeNameLength = len(tube) + 1
 		}
@@ -47,7 +51,10 @@ func NewTui(server *server) *tui {
 	for tube, stats := range tubeStats {
 		rowFlex := t.BuildFlexRow(tube, stats)
 		t.rowFlexes[tube] = rowFlex
-		flex.AddItem(rowFlex, 1, 0, false)
+		if t.shouldBeVisible(stats) {
+			t.mainFlex.AddItem(rowFlex, 1, 0, false)
+			t.visibleTubes[tube] = true
+		}
 	}
 
 	t.app = app
@@ -78,6 +85,16 @@ func (t *tui) BuildFlexRow(tube string, stats map[string]string) *tview.Flex {
 	}
 
 	return flex
+}
+
+func (t *tui) shouldBeVisible(stats map[string]string) bool {
+	for _, state := range []string{"ready", "delayed", "buried"} {
+		val, _ := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", state)])
+		if val > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func getStateColor(state string) tcell.Color {
@@ -121,13 +138,35 @@ func (t *tui) StartPeriodicUpdates() {
 					panic(err)
 				}
 
-				for tube, _ := range tubeStats {
-					if len(tube) > t.maxTubeNameLength {
-						t.maxTubeNameLength = len(tube) + 1 // TODO if this increases, we don't have a way of increasing the width of the tube name cell
+				// This part handles resizing the name column if a new, longer tube name appears.
+				newMaxLength := t.maxTubeNameLength
+				for tube := range tubeStats {
+					if len(tube)+1 > newMaxLength {
+						newMaxLength = len(tube) + 1
+					}
+				}
+
+				if newMaxLength > t.maxTubeNameLength {
+					t.maxTubeNameLength = newMaxLength
+					for tube, rowFlex := range t.rowFlexes {
+						nameCell := t.cellRefs[tube]["name"]
+						rowFlex.ResizeItem(nameCell, newMaxLength, 0)
 					}
 				}
 
 				for tube, stats := range tubeStats {
+					// Handle new tubes that weren't present at startup
+					if _, exists := t.rowFlexes[tube]; !exists {
+						rowFlex := t.BuildFlexRow(tube, stats)
+						t.rowFlexes[tube] = rowFlex
+					}
+
+					// Make tubes visible if they become active
+					if !t.visibleTubes[tube] && t.shouldBeVisible(stats) {
+						t.mainFlex.AddItem(t.rowFlexes[tube], 1, 0, false)
+						t.visibleTubes[tube] = true
+					}
+
 					t.UpdateRow(tube, stats)
 				}
 			})
