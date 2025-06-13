@@ -10,22 +10,25 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+type tubeRow struct {
+	flex      *tview.Flex // The horizontal flexbox that contains the tube name and state cells
+	isVisible bool
+}
+
 type tui struct {
 	app               *tview.Application
 	server            *server
 	maxTubeNameLength int
 	cellRefs          map[string]map[string]*tview.TextView
-	rowFlexes         map[string]*tview.Flex
-	mainFlex          *tview.Flex
-	visibleTubes      map[string]bool
+	tubeRows          map[string]*tubeRow
+	mainFlex          *tview.Flex // The vertical flexbox that contains all the tube rows
 }
 
 func NewTui(server *server) *tui {
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
-		rowFlexes:         make(map[string]*tview.Flex),
-		visibleTubes:      make(map[string]bool),
+		tubeRows:          make(map[string]*tubeRow),
 	}
 	app := tview.NewApplication()
 	pages := tview.NewPages()
@@ -133,23 +136,24 @@ func (t *tui) Update() {
 
 		if newMaxLength > t.maxTubeNameLength {
 			t.maxTubeNameLength = newMaxLength
-			for tube, rowFlex := range t.rowFlexes {
+			for tube, row := range t.tubeRows {
 				nameCell := t.cellRefs[tube]["name"]
-				rowFlex.ResizeItem(nameCell, newMaxLength, 0)
+				row.flex.ResizeItem(nameCell, newMaxLength, 0)
 			}
 		}
 
 		for tube, stats := range tubeStats {
 			// Handle new tubes that weren't present at startup
-			if _, exists := t.rowFlexes[tube]; !exists {
+			if _, exists := t.tubeRows[tube]; !exists {
 				rowFlex := t.BuildFlexRow(tube, stats)
-				t.rowFlexes[tube] = rowFlex
+				t.tubeRows[tube] = &tubeRow{flex: rowFlex}
 			}
 
 			// Make tubes visible if they become active
-			if !t.visibleTubes[tube] && t.shouldBeVisible(stats) {
-				t.mainFlex.AddItem(t.rowFlexes[tube], 1, 0, false)
-				t.visibleTubes[tube] = true
+			row := t.tubeRows[tube]
+			if !row.isVisible && t.shouldBeVisible(stats) {
+				t.mainFlex.AddItem(row.flex, 1, 0, false)
+				row.isVisible = true
 			}
 
 			t.UpdateRow(tube, stats)
@@ -158,7 +162,7 @@ func (t *tui) Update() {
 }
 
 func (t *tui) UpdateRow(tube string, stats map[string]string) {
-	rowFlex := t.rowFlexes[tube]
+	rowFlex := t.tubeRows[tube].flex
 	for _, state := range []string{"ready", "delayed", "buried"} {
 		tv := t.cellRefs[tube][state]
 		value := stats[fmt.Sprintf("current-jobs-%s", state)]
