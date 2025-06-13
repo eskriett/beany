@@ -37,26 +37,6 @@ func NewTui(server *server) *tui {
 	pages.AddPage("table", flex, true, true)
 	app.SetRoot(pages, true)
 
-	tubeStats, err := server.GetTubeStats()
-	if err != nil {
-		panic(err)
-	}
-
-	for tube := range tubeStats {
-		if len(tube) > t.maxTubeNameLength {
-			t.maxTubeNameLength = len(tube) + 1
-		}
-	}
-
-	for tube, stats := range tubeStats {
-		rowFlex := t.BuildFlexRow(tube, stats)
-		t.rowFlexes[tube] = rowFlex
-		if t.shouldBeVisible(stats) {
-			t.mainFlex.AddItem(rowFlex, 1, 0, false)
-			t.visibleTubes[tube] = true
-		}
-	}
-
 	t.app = app
 	return t
 }
@@ -115,63 +95,66 @@ func GetCellWidth(contents string) int {
 	if val == 0 {
 		return 0
 	}
-	ln := math.Log(float64(val))
-	return int(math.Max(float64(len(contents)), ln)) + 1
+	log := math.Log2(float64(val))
+	return int(math.Max(float64(len(contents)), log)) + 1
 }
 
 func (t *tui) Run() {
-	t.StartPeriodicUpdates()
+	go func() {
+		t.Update()
+
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			t.Update()
+		}
+	}()
+
 	if err := t.app.Run(); err != nil {
 		panic(err)
 	}
 }
 
-func (t *tui) StartPeriodicUpdates() {
-	go func() {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
+func (t *tui) Update() {
+	tubeStats, err := t.server.GetTubeStats()
+	if err != nil {
+		panic(err)
+	}
 
-		for range ticker.C {
-			t.app.QueueUpdateDraw(func() {
-				tubeStats, err := t.server.GetTubeStats()
-				if err != nil {
-					panic(err)
-				}
-
-				// This part handles resizing the name column if a new, longer tube name appears.
-				newMaxLength := t.maxTubeNameLength
-				for tube := range tubeStats {
-					if len(tube)+1 > newMaxLength {
-						newMaxLength = len(tube) + 1
-					}
-				}
-
-				if newMaxLength > t.maxTubeNameLength {
-					t.maxTubeNameLength = newMaxLength
-					for tube, rowFlex := range t.rowFlexes {
-						nameCell := t.cellRefs[tube]["name"]
-						rowFlex.ResizeItem(nameCell, newMaxLength, 0)
-					}
-				}
-
-				for tube, stats := range tubeStats {
-					// Handle new tubes that weren't present at startup
-					if _, exists := t.rowFlexes[tube]; !exists {
-						rowFlex := t.BuildFlexRow(tube, stats)
-						t.rowFlexes[tube] = rowFlex
-					}
-
-					// Make tubes visible if they become active
-					if !t.visibleTubes[tube] && t.shouldBeVisible(stats) {
-						t.mainFlex.AddItem(t.rowFlexes[tube], 1, 0, false)
-						t.visibleTubes[tube] = true
-					}
-
-					t.UpdateRow(tube, stats)
-				}
-			})
+	t.app.QueueUpdateDraw(func() {
+		// This part handles resizing the name column if a new, longer tube name appears.
+		newMaxLength := t.maxTubeNameLength
+		for tube := range tubeStats {
+			if len(tube)+1 > newMaxLength {
+				newMaxLength = len(tube) + 1
+			}
 		}
-	}()
+
+		if newMaxLength > t.maxTubeNameLength {
+			t.maxTubeNameLength = newMaxLength
+			for tube, rowFlex := range t.rowFlexes {
+				nameCell := t.cellRefs[tube]["name"]
+				rowFlex.ResizeItem(nameCell, newMaxLength, 0)
+			}
+		}
+
+		for tube, stats := range tubeStats {
+			// Handle new tubes that weren't present at startup
+			if _, exists := t.rowFlexes[tube]; !exists {
+				rowFlex := t.BuildFlexRow(tube, stats)
+				t.rowFlexes[tube] = rowFlex
+			}
+
+			// Make tubes visible if they become active
+			if !t.visibleTubes[tube] && t.shouldBeVisible(stats) {
+				t.mainFlex.AddItem(t.rowFlexes[tube], 1, 0, false)
+				t.visibleTubes[tube] = true
+			}
+
+			t.UpdateRow(tube, stats)
+		}
+	})
 }
 
 func (t *tui) UpdateRow(tube string, stats map[string]string) {
