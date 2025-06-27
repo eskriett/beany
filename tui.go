@@ -16,18 +16,21 @@ type tui struct {
 	server            *server
 	maxTubeNameLength int
 	mainList          *tview.List
+	visibleTubes      map[string]bool
 }
 
 func NewTui(server *server) *tui {
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
+		visibleTubes:      make(map[string]bool),
 	}
 	app := tview.NewApplication()
 	pages := tview.NewPages()
 	list := tview.NewList()
 	list.SetBorder(true)
 	list.SetTitle("beany")
+	list.ShowSecondaryText(false)
 	t.mainList = list
 	pages.AddPage("table", list, true, true)
 	app.SetRoot(pages, true)
@@ -114,23 +117,28 @@ func (t *tui) Update() {
 	}
 
 	t.app.QueueUpdateDraw(func() {
-		// Calculate the max length for the tube name column
+		// Add tubes with jobs to the set of visible tubes
+		for tube, stats := range tubeStats {
+			if t.shouldBeVisible(stats) {
+				t.visibleTubes[tube] = true
+			}
+		}
+
+		// Create a sorted list of all tubes that have ever been visible
+		var tubesToDisplay []string
+		for tube := range t.visibleTubes {
+			tubesToDisplay = append(tubesToDisplay, tube)
+		}
+		sort.Strings(tubesToDisplay)
+
+		// Calculate max tube name length
 		newMaxLength := 0
-		for tube := range tubeStats {
+		for _, tube := range tubesToDisplay {
 			if len(tube) > newMaxLength {
 				newMaxLength = len(tube)
 			}
 		}
 		t.maxTubeNameLength = newMaxLength
-
-		// Filter for visible tubes and sort them
-		var visibleTubes []string
-		for tube, stats := range tubeStats {
-			if t.shouldBeVisible(stats) {
-				visibleTubes = append(visibleTubes, tube)
-			}
-		}
-		sort.Strings(visibleTubes)
 
 		// Preserve selection
 		selectedTubeIndex := t.mainList.GetCurrentItem()
@@ -143,8 +151,16 @@ func (t *tui) Update() {
 		t.mainList.Clear()
 
 		newSelectedTubeIndex := -1
-		for i, tube := range visibleTubes {
-			stats := tubeStats[tube]
+		for i, tube := range tubesToDisplay {
+			stats, ok := tubeStats[tube]
+			if !ok {
+				// Tube is now empty, but we should still show it to prevent later list items from jumping around
+				stats = map[string]string{
+					"current-jobs-ready":   "0",
+					"current-jobs-delayed": "0",
+					"current-jobs-buried":  "0",
+				}
+			}
 			rowString := t.BuildListRow(tube, stats)
 			t.mainList.AddItem(rowString, "", 0, nil)
 			if rowString == selectedTubeText {
