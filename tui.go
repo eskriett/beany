@@ -26,15 +26,20 @@ func NewTui(server *server) *tui {
 		visibleTubes:      make(map[string]bool),
 	}
 	app := tview.NewApplication()
-	pages := tview.NewPages()
 	list := tview.NewList()
-	list.SetBorder(true)
-	list.SetTitle("beany")
 	list.ShowSecondaryText(false)
 	t.mainList = list
-	pages.AddPage("table", list, true, true)
-	app.SetRoot(pages, true)
 
+	rightPanel := tview.NewBox() // TODO put the CLI in here
+
+	grid := tview.NewGrid().
+		SetColumns(0, 0).
+		SetRows(0).
+		SetBorders(true).
+		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
+		AddItem(rightPanel, 0, 1, 1, 1, 0, 0, false)
+
+	app.SetRoot(grid, true)
 	t.app = app
 	return t
 }
@@ -44,7 +49,7 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 
 	// Add tube name cell
 	namePadding := strings.Repeat(" ", t.maxTubeNameLength-len(tube))
-	rowParts = append(rowParts, fmt.Sprintf("%s%s", tube, namePadding))
+	rowParts = append(rowParts, fmt.Sprintf("%s%s ", tube, namePadding))
 
 	// Add state cells
 	for _, state := range []string{"ready", "delayed", "buried"} {
@@ -145,8 +150,8 @@ func (t *tui) Update() {
 		selectedTubeIndex := t.mainList.GetCurrentItem()
 		var selectedTubeText string
 		if selectedTubeIndex >= 0 && t.mainList.GetItemCount() > 0 && selectedTubeIndex < t.mainList.GetItemCount() {
-			main, _ := t.mainList.GetItemText(selectedTubeIndex)
-			selectedTubeText = main
+			selectedTubeName, _ := t.mainList.GetItemText(selectedTubeIndex)
+			selectedTubeText = selectedTubeName
 		}
 
 		t.mainList.Clear()
