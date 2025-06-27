@@ -3,71 +3,59 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rivo/tview"
-	"github.com/gdamore/tcell/v2"
 )
-
-type tubeRow struct {
-	flex      *tview.Flex // The horizontal flexbox that contains the tube name and state cells
-	isVisible bool
-}
 
 type tui struct {
 	app               *tview.Application
 	server            *server
 	maxTubeNameLength int
-	cellRefs          map[string]map[string]*tview.TextView
-	tubeRows          map[string]*tubeRow
-	mainFlex          *tview.Flex // The vertical flexbox that contains all the tube rows
+	mainList          *tview.List
 }
 
 func NewTui(server *server) *tui {
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
-		tubeRows:          make(map[string]*tubeRow),
 	}
 	app := tview.NewApplication()
 	pages := tview.NewPages()
-	flex := tview.NewFlex()
-	flex.SetDirection(tview.FlexRow)
-	flex.SetBorder(true)
-	flex.SetTitle("beany")
-	t.mainFlex = flex
-	pages.AddPage("table", flex, true, true)
+	list := tview.NewList()
+	list.SetBorder(true)
+	list.SetTitle("beany")
+	t.mainList = list
+	pages.AddPage("table", list, true, true)
 	app.SetRoot(pages, true)
 
 	t.app = app
 	return t
 }
 
-func (t *tui) BuildFlexRow(tube string, stats map[string]string) *tview.Flex {
-	if t.cellRefs == nil {
-		t.cellRefs = make(map[string]map[string]*tview.TextView)
-	}
-	t.cellRefs[tube] = make(map[string]*tview.TextView)
-
-	flex := tview.NewFlex()
-	flex.SetDirection(tview.FlexColumn)
+func (t *tui) BuildListRow(tube string, stats map[string]string) string {
+	var rowParts []string
 
 	// Add tube name cell
-	tubeCell := tview.NewTextView().SetTextAlign(tview.AlignRight).SetText(fmt.Sprintf("%s ", tube))
-	t.cellRefs[tube]["name"] = tubeCell
-	flex.AddItem(tubeCell, t.maxTubeNameLength, 0, false)
+	namePadding := strings.Repeat(" ", t.maxTubeNameLength-len(tube))
+	rowParts = append(rowParts, fmt.Sprintf("%s%s", tube, namePadding))
 
 	// Add state cells
 	for _, state := range []string{"ready", "delayed", "buried"} {
-		cell := tview.NewTextView()
-		cell.SetBackgroundColor(getStateColor(state))
-		cell.SetText(fmt.Sprintf("%s", stats[fmt.Sprintf("current-jobs-%s", state)]))
-		t.cellRefs[tube][state] = cell
-		flex.AddItem(cell, GetCellWidth(stats[fmt.Sprintf("current-jobs-%s", state)]), 0, false)
+		value := stats[fmt.Sprintf("current-jobs-%s", state)]
+		width := GetCellWidth(value)
+		if width > 0 {
+			colourName := getStateColourName(state)
+			// Right-align the value with padding
+			paddedValue := fmt.Sprintf("%*s", width, value)
+			rowParts = append(rowParts, fmt.Sprintf("[:%s]%s[-:-:-]", colourName, paddedValue))
+		}
 	}
 
-	return flex
+	return strings.Join(rowParts, " ")
 }
 
 func (t *tui) shouldBeVisible(stats map[string]string) bool {
@@ -80,16 +68,16 @@ func (t *tui) shouldBeVisible(stats map[string]string) bool {
 	return false
 }
 
-func getStateColor(state string) tcell.Color {
+func getStateColourName(state string) string {
 	switch state {
 	case "ready":
-		return tcell.ColorDarkGreen
+		return "darkgreen"
 	case "delayed":
-		return tcell.ColorDarkGoldenrod
+		return "darkgoldenrod"
 	case "buried":
-		return tcell.ColorDarkRed
+		return "darkred"
 	default:
-		return tcell.ColorBlack
+		return "white"
 	}
 }
 
@@ -126,48 +114,48 @@ func (t *tui) Update() {
 	}
 
 	t.app.QueueUpdateDraw(func() {
-		// This part handles resizing the name column if a new, longer tube name appears.
-		newMaxLength := t.maxTubeNameLength
+		// Calculate the max length for the tube name column
+		newMaxLength := 0
 		for tube := range tubeStats {
-			if len(tube)+1 > newMaxLength {
-				newMaxLength = len(tube) + 1
+			if len(tube) > newMaxLength {
+				newMaxLength = len(tube)
 			}
 		}
+		t.maxTubeNameLength = newMaxLength
 
-		if newMaxLength > t.maxTubeNameLength {
-			t.maxTubeNameLength = newMaxLength
-			for tube, row := range t.tubeRows {
-				nameCell := t.cellRefs[tube]["name"]
-				row.flex.ResizeItem(nameCell, newMaxLength, 0)
-			}
-		}
-
+		// Filter for visible tubes and sort them
+		var visibleTubes []string
 		for tube, stats := range tubeStats {
-			// Handle new tubes that weren't present at startup
-			if _, exists := t.tubeRows[tube]; !exists {
-				rowFlex := t.BuildFlexRow(tube, stats)
-				t.tubeRows[tube] = &tubeRow{flex: rowFlex}
+			if t.shouldBeVisible(stats) {
+				visibleTubes = append(visibleTubes, tube)
 			}
+		}
+		sort.Strings(visibleTubes)
 
-			// Make tubes visible if they become active
-			row := t.tubeRows[tube]
-			if !row.isVisible && t.shouldBeVisible(stats) {
-				t.mainFlex.AddItem(row.flex, 1, 0, false)
-				row.isVisible = true
+		// Preserve selection
+		selectedTubeIndex := t.mainList.GetCurrentItem()
+		var selectedTubeText string
+		if selectedTubeIndex >= 0 && t.mainList.GetItemCount() > 0 && selectedTubeIndex < t.mainList.GetItemCount() {
+			main, _ := t.mainList.GetItemText(selectedTubeIndex)
+			selectedTubeText = main
+		}
+
+		t.mainList.Clear()
+
+		newSelectedTubeIndex := -1
+		for i, tube := range visibleTubes {
+			stats := tubeStats[tube]
+			rowString := t.BuildListRow(tube, stats)
+			t.mainList.AddItem(rowString, "", 0, nil)
+			if rowString == selectedTubeText {
+				newSelectedTubeIndex = i
 			}
+		}
 
-			t.UpdateRow(tube, stats)
+		if newSelectedTubeIndex != -1 {
+			t.mainList.SetCurrentItem(newSelectedTubeIndex)
+		} else if selectedTubeIndex < t.mainList.GetItemCount() {
+			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
 	})
-}
-
-func (t *tui) UpdateRow(tube string, stats map[string]string) {
-	rowFlex := t.tubeRows[tube].flex
-	for _, state := range []string{"ready", "delayed", "buried"} {
-		tv := t.cellRefs[tube][state]
-		value := stats[fmt.Sprintf("current-jobs-%s", state)]
-		tv.SetText(fmt.Sprintf("%s", value))
-		tv.SetBackgroundColor(getStateColor(state))
-		rowFlex.ResizeItem(tv, GetCellWidth(value), 0)
-	}
 }
