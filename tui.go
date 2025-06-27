@@ -53,12 +53,13 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 		if width > 0 {
 			colourName := getStateColourName(state)
 			// Right-align the value with padding
-			paddedValue := fmt.Sprintf("%*s", width, value)
-			rowParts = append(rowParts, fmt.Sprintf("[:%s]%s[-:-:-]", colourName, paddedValue))
+			paddedValue := fmt.Sprintf("%*s ", width, value)
+			rowParts = append(rowParts, fmt.Sprintf("[white:%s]%s[-:-:-]", colourName, paddedValue))
 		}
 	}
 
-	return strings.Join(rowParts, " ")
+	rowParts = append(rowParts, " ")
+	return strings.Join(rowParts, "")
 }
 
 func (t *tui) shouldBeVisible(stats map[string]string) bool {
