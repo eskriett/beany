@@ -42,12 +42,37 @@ func NewTui(server *server, cli *cli) *tui {
 	})
 	t.cli.shell.SetOut(cliOutput)
 
+	footer := tview.NewTextView().
+		SetDynamicColors(true)
+
+	funcKeyMap := map[int]string{
+		1:  "Help",
+		2:  "Setup",
+		3:  "DeleteBuried",
+		4:  "DeleteDelayed",
+		5:  "DeleteReady",
+		6:  "Kick",
+		7:  "Pause",
+		8:  "PeekBuried",
+		9:  "PeekDelayed",
+		10: "PeekReady",
+		11: "Disconnect",
+		12: "Exit",
+	}
+
+	var footerParts []string
+	for i := 1; i <= 12; i++ {
+		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
+	}
+	footer.SetText(strings.Join(footerParts, " "))
+
 	grid := tview.NewGrid().
 		SetColumns(0, 0).
-		SetRows(0).
+		SetRows(0, 1).
 		SetBorders(true).
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
-		AddItem(cliOutput, 0, 1, 1, 1, 0, 0, false)
+		AddItem(cliOutput, 0, 1, 1, 1, 0, 0, false).
+		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	app.SetRoot(grid, true)
 	t.app = app
