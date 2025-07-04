@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -18,6 +19,7 @@ type tui struct {
 	mainList          *tview.List
 	visibleTubes      map[string]bool
 	cli               *cli
+	cliOutput         *tview.TextView
 }
 
 func NewTui(server *server, cli *cli) *tui {
@@ -40,6 +42,7 @@ func NewTui(server *server, cli *cli) *tui {
 	cliOutput.SetChangedFunc(func() {
 		app.Draw()
 	})
+	t.cliOutput = cliOutput
 	t.cli.shell.SetOut(cliOutput)
 
 	footer := tview.NewTextView().
@@ -73,6 +76,36 @@ func NewTui(server *server, cli *cli) *tui {
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
 		AddItem(cliOutput, 0, 1, 1, 1, 0, 0, false).
 		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyF1:
+			t.HandleHelp()
+		case tcell.KeyF2:
+			t.HandleSetup()
+		case tcell.KeyF3:
+			t.HandleDeleteBuried()
+		case tcell.KeyF4:
+			t.HandleDeleteDelayed()
+		case tcell.KeyF5:
+			t.HandleDeleteReady()
+		case tcell.KeyF6:
+			t.HandleKick()
+		case tcell.KeyF7:
+			t.HandlePause()
+		case tcell.KeyF8:
+			t.HandlePeekBuried()
+		case tcell.KeyF9:
+			t.HandlePeekDelayed()
+		case tcell.KeyF10:
+			t.HandlePeekReady()
+		case tcell.KeyF11: // TODO we can't use F11 or F12, condense the rest somehow
+			t.HandleDisconnect()
+		case tcell.KeyF12:
+			t.HandleExit()
+		}
+		return event
+	})
 
 	app.SetRoot(grid, true)
 	t.app = app
@@ -215,4 +248,52 @@ func (t *tui) Update() {
 			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
 	})
+}
+
+func (t *tui) HandleHelp() {
+	fmt.Fprintf(t.cliOutput, "called Help\n")
+}
+
+func (t *tui) HandleSetup() {
+	fmt.Fprintf(t.cliOutput, "called Setup\n")
+}
+
+func (t *tui) HandleDeleteBuried() {
+	fmt.Fprintf(t.cliOutput, "called DeleteBuried\n")
+}
+
+func (t *tui) HandleDeleteDelayed() {
+	fmt.Fprintf(t.cliOutput, "called DeleteDelayed\n")
+}
+
+func (t *tui) HandleDeleteReady() {
+	fmt.Fprintf(t.cliOutput, "called DeleteReady\n")
+}
+
+func (t *tui) HandleKick() {
+	fmt.Fprintf(t.cliOutput, "called Kick\n")
+}
+
+func (t *tui) HandlePause() {
+	fmt.Fprintf(t.cliOutput, "called Pause\n")
+}
+
+func (t *tui) HandlePeekBuried() {
+	fmt.Fprintf(t.cliOutput, "called PeekBuried\n")
+}
+
+func (t *tui) HandlePeekDelayed() {
+	fmt.Fprintf(t.cliOutput, "called PeekDelayed\n")
+}
+
+func (t *tui) HandlePeekReady() {
+	fmt.Fprintf(t.cliOutput, "called PeekReady\n")
+}
+
+func (t *tui) HandleDisconnect() {
+	fmt.Fprintf(t.cliOutput, "called Disconnect\n")
+}
+
+func (t *tui) HandleExit() {
+	fmt.Fprintf(t.cliOutput, "called Exit\n")
 }
