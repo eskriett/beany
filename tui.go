@@ -17,27 +17,37 @@ type tui struct {
 	maxTubeNameLength int
 	mainList          *tview.List
 	visibleTubes      map[string]bool
+	cli               *cli
 }
 
-func NewTui(server *server) *tui {
+func NewTui(server *server, cli *cli) *tui {
+	app := tview.NewApplication()
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
 		visibleTubes:      make(map[string]bool),
+		cli:               cli,
+		app:               app,
 	}
-	app := tview.NewApplication()
+
 	list := tview.NewList()
 	list.ShowSecondaryText(false)
 	t.mainList = list
 
-	rightPanel := tview.NewBox() // TODO put the CLI in here
+	cliOutput := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true)
+	cliOutput.SetChangedFunc(func() {
+		app.Draw()
+	})
+	t.cli.shell.SetOut(cliOutput)
 
 	grid := tview.NewGrid().
 		SetColumns(0, 0).
 		SetRows(0).
 		SetBorders(true).
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
-		AddItem(rightPanel, 0, 1, 1, 1, 0, 0, false)
+		AddItem(cliOutput, 0, 1, 1, 1, 0, 0, false)
 
 	app.SetRoot(grid, true)
 	t.app = app
