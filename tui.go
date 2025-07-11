@@ -36,6 +36,9 @@ func NewTui(server *server, cli *cli) *tui {
 
 	list := tview.NewList()
 	list.ShowSecondaryText(false)
+	list.SetChangedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+		t.peekView.Clear()
+	})
 	t.mainList = list
 
 	cliOutput := tview.NewTextView().
@@ -246,16 +249,16 @@ func (t *tui) Update() {
 			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
 
-		t.updatePeekView(t.tubes)
+		t.updatePeekView()
 	})
 }
 
-func (t *tui) updatePeekView(tubesToDisplay []string) {
+func (t *tui) updatePeekView() {
 	// Peek at the selected tube
 	t.peekView.Clear()
 	currentSelection := t.mainList.GetCurrentItem()
-	if currentSelection >= 0 && currentSelection < len(tubesToDisplay) {
-		selectedTubeName := tubesToDisplay[currentSelection]
+	if currentSelection >= 0 && currentSelection < len(t.tubes) {
+		selectedTubeName := t.tubes[currentSelection]
 
 		var peekContent strings.Builder
 		var peekedSomething bool
