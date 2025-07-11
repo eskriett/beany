@@ -17,6 +17,7 @@ type tui struct {
 	server            *server
 	maxTubeNameLength int
 	mainList          *tview.List
+	peekView          *tview.TextView
 	visibleTubes      map[string]bool
 	cli               *cli
 	cliOutput         *tview.TextView
@@ -45,26 +46,34 @@ func NewTui(server *server, cli *cli) *tui {
 	t.cliOutput = cliOutput
 	t.cli.shell.SetOut(cliOutput)
 
+	peekView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true)
+	peekView.SetBorder(true).SetTitle("Peek")
+	t.peekView = peekView
+
+	rightPane := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(peekView, 0, 1, false).
+		AddItem(cliOutput, 10, 1, false)
+
 	footer := tview.NewTextView().
 		SetDynamicColors(true)
 
 	funcKeyMap := map[int]string{
-		1:  "Help",
-		2:  "Setup",
-		3:  "DeleteBuried",
-		4:  "DeleteDelayed",
-		5:  "DeleteReady",
-		6:  "Kick",
-		7:  "Pause",
-		8:  "PeekBuried",
-		9:  "PeekDelayed",
-		10: "PeekReady",
-		11: "Disconnect",
-		12: "Exit",
+		1: "Help",
+		2: "Setup",
+		3: "DeleteBuried",
+		4: "DeleteDelayed",
+		5: "DeleteReady",
+		6: "Kick",
+		7: "KickAll",
+		8: "Pause",
+		9: "Disconnect",
+		10: "Exit",
 	}
 
 	var footerParts []string
-	for i := 1; i <= 12; i++ {
+	for i := 1; i <= 10; i++ {
 		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
 	}
 	footer.SetText(strings.Join(footerParts, " "))
@@ -74,7 +83,7 @@ func NewTui(server *server, cli *cli) *tui {
 		SetRows(0, 1).
 		SetBorders(true).
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
-		AddItem(cliOutput, 0, 1, 1, 1, 0, 0, false).
+		AddItem(rightPane, 0, 1, 1, 1, 0, 0, false).
 		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -93,12 +102,6 @@ func NewTui(server *server, cli *cli) *tui {
 			t.HandleKick()
 		case tcell.KeyF7:
 			t.HandlePause()
-		case tcell.KeyF8:
-			t.HandlePeekBuried()
-		case tcell.KeyF9:
-			t.HandlePeekDelayed()
-		case tcell.KeyF10:
-			t.HandlePeekReady()
 		case tcell.KeyF11: // TODO we can't use F11 or F12, condense the rest somehow
 			t.HandleDisconnect()
 		case tcell.KeyF12:
@@ -247,7 +250,38 @@ func (t *tui) Update() {
 		} else if selectedTubeIndex < t.mainList.GetItemCount() {
 			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
+
+		t.updatePeekView(tubesToDisplay)
 	})
+}
+
+func (t *tui) updatePeekView(tubesToDisplay []string) {
+	// Peek at the selected tube
+	t.peekView.Clear()
+	currentSelection := t.mainList.GetCurrentItem()
+	if currentSelection >= 0 && currentSelection < len(tubesToDisplay) {
+		selectedTubeName := tubesToDisplay[currentSelection]
+
+		var peekContent strings.Builder
+		var peekedSomething bool
+		for _, state := range []string{"ready", "delayed", "buried"} {
+			id, body, err := t.server.Peek(state, selectedTubeName)
+			if err == nil {
+				peekedSomething = true
+				peekContent.WriteString(fmt.Sprintf("[::b]Peek %s[-:-:-]\n", state))
+				peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
+				peekContent.WriteString(string(body) + "\n\n")
+			}
+		}
+
+		if !peekedSomething {
+			t.peekView.SetText(fmt.Sprintf("No jobs to peek in %s.", selectedTubeName))
+		} else {
+			t.peekView.SetText(peekContent.String())
+		}
+	} else {
+		t.peekView.SetText("Select a tube to peek jobs.")
+	}
 }
 
 func (t *tui) HandleHelp() {
@@ -274,20 +308,12 @@ func (t *tui) HandleKick() {
 	fmt.Fprintf(t.cliOutput, "called Kick\n")
 }
 
+func (t *tui) HandleKickAll() {
+	fmt.Fprintf(t.cliOutput, "called KickAll\n")
+}
+
 func (t *tui) HandlePause() {
 	fmt.Fprintf(t.cliOutput, "called Pause\n")
-}
-
-func (t *tui) HandlePeekBuried() {
-	fmt.Fprintf(t.cliOutput, "called PeekBuried\n")
-}
-
-func (t *tui) HandlePeekDelayed() {
-	fmt.Fprintf(t.cliOutput, "called PeekDelayed\n")
-}
-
-func (t *tui) HandlePeekReady() {
-	fmt.Fprintf(t.cliOutput, "called PeekReady\n")
 }
 
 func (t *tui) HandleDisconnect() {
