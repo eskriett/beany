@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ type tui struct {
 	maxTubeNameLength int
 	mainList          *tview.List
 	peekView          *tview.TextView
-	visibleTubes      map[string]bool
+	tubes             []string
 	cli               *cli
 	cliOutput         *tview.TextView
 }
@@ -28,7 +29,7 @@ func NewTui(server *server, cli *cli) *tui {
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
-		visibleTubes:      make(map[string]bool),
+		tubes:             make([]string, 0),
 		cli:               cli,
 		app:               app,
 	}
@@ -102,7 +103,7 @@ func NewTui(server *server, cli *cli) *tui {
 			t.HandleKick()
 		case tcell.KeyF7:
 			t.HandlePause()
-		case tcell.KeyF11: // TODO we can't use F11 or F12, condense the rest somehow
+		case tcell.KeyF11:
 			t.HandleDisconnect()
 		case tcell.KeyF12:
 			t.HandleExit()
@@ -138,7 +139,7 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 	return strings.Join(rowParts, "")
 }
 
-func (t *tui) shouldBeVisible(stats map[string]string) bool {
+func (t *tui) tubeCurrentlyActive(stats map[string]string) bool {
 	for _, state := range []string{"ready", "delayed", "buried"} {
 		val, _ := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", state)])
 		if val > 0 {
@@ -194,23 +195,17 @@ func (t *tui) Update() {
 	}
 
 	t.app.QueueUpdateDraw(func() {
-		// Add tubes with jobs to the set of visible tubes
+		// Add any new tubes to our list
 		for tube, stats := range tubeStats {
-			if t.shouldBeVisible(stats) {
-				t.visibleTubes[tube] = true
+			if t.tubeCurrentlyActive(stats) && !slices.Contains(t.tubes, tube) {
+				t.tubes = append(t.tubes, tube)
 			}
 		}
-
-		// Create a sorted list of all tubes that have ever been visible
-		var tubesToDisplay []string
-		for tube := range t.visibleTubes {
-			tubesToDisplay = append(tubesToDisplay, tube)
-		}
-		sort.Strings(tubesToDisplay)
+		sort.Strings(t.tubes)
 
 		// Calculate max tube name length
 		newMaxLength := 0
-		for _, tube := range tubesToDisplay {
+		for _, tube := range t.tubes {
 			if len(tube) > newMaxLength {
 				newMaxLength = len(tube)
 			}
@@ -228,7 +223,7 @@ func (t *tui) Update() {
 		t.mainList.Clear()
 
 		newSelectedTubeIndex := -1
-		for i, tube := range tubesToDisplay {
+		for i, tube := range t.tubes {
 			stats, ok := tubeStats[tube]
 			if !ok {
 				// Tube is now empty, but we should still show it to prevent later list items from jumping around
@@ -251,7 +246,7 @@ func (t *tui) Update() {
 			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
 
-		t.updatePeekView(tubesToDisplay)
+		t.updatePeekView(t.tubes)
 	})
 }
 
