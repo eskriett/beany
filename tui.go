@@ -20,6 +20,7 @@ type tui struct {
 	mainList          *tview.List
 	peekView          *tview.TextView
 	tubes             []string
+	pages             *tview.Pages
 }
 
 func NewTui(server *server) *tui {
@@ -83,6 +84,10 @@ func NewTui(server *server) *tui {
 		AddItem(peekView, 0, 1, 1, 1, 0, 0, false).
 		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
+	pages := tview.NewPages().
+		AddPage("main", grid, true, true)
+	t.pages = pages
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyF1:
@@ -109,7 +114,7 @@ func NewTui(server *server) *tui {
 		return event
 	})
 
-	app.SetRoot(grid, true)
+	app.SetRoot(pages, true)
 	t.app = app
 	return t
 }
@@ -279,7 +284,15 @@ func (t *tui) updatePeekView() {
 }
 
 func (t *tui) HandleHelp() {
-	// TODO: Implement help
+	modal := tview.NewModal().
+		SetText("Placeholder help"). // TODO
+		AddButtons([]string{"Close"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Close" {
+				t.pages.RemovePage("help")
+			}
+		})
+	t.pages.AddPage("help", modal, true, true)
 }
 
 func (t *tui) HandleSetup() {
