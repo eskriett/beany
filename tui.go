@@ -20,17 +20,14 @@ type tui struct {
 	mainList          *tview.List
 	peekView          *tview.TextView
 	tubes             []string
-	cli               *cli
-	cliOutput         *tview.TextView
 }
 
-func NewTui(server *server, cli *cli) *tui {
+func NewTui(server *server) *tui {
 	app := tview.NewApplication()
 	t := &tui{
 		server:            server,
 		maxTubeNameLength: 0,
 		tubes:             make([]string, 0),
-		cli:               cli,
 		app:               app,
 	}
 
@@ -41,23 +38,10 @@ func NewTui(server *server, cli *cli) *tui {
 	})
 	t.mainList = list
 
-	cliOutput := tview.NewTextView().
-		SetDynamicColors(true).
-		SetScrollable(true)
-	cliOutput.SetChangedFunc(func() {
-		app.Draw()
-	})
-	t.cliOutput = cliOutput
-	t.cli.shell.SetOut(cliOutput)
-
 	peekView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true)
 	t.peekView = peekView
-
-	rightPane := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(peekView, 0, 1, false).
-		AddItem(cliOutput, 10, 1, false)
 
 	funcKeyMap := map[int]string{
 		1:  "Help",
@@ -96,7 +80,7 @@ func NewTui(server *server, cli *cli) *tui {
 		SetRows(0, 1).
 		SetBorders(true).
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
-		AddItem(rightPane, 0, 1, 1, 1, 0, 0, false).
+		AddItem(peekView, 0, 1, 1, 1, 0, 0, false).
 		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -293,41 +277,41 @@ func (t *tui) updatePeekView() {
 }
 
 func (t *tui) HandleHelp() {
-	fmt.Fprintf(t.cliOutput, "called Help\n")
+	// TODO: Implement help
 }
 
 func (t *tui) HandleSetup() {
-	fmt.Fprintf(t.cliOutput, "called Setup\n")
+	// TODO: Implement setup
 }
 
 func (t *tui) HandleDeleteBuried() {
-	fmt.Fprintf(t.cliOutput, "called DeleteBuried\n")
+	// TODO: Implement delete buried
 }
 
 func (t *tui) HandleDeleteDelayed() {
-	fmt.Fprintf(t.cliOutput, "called DeleteDelayed\n")
+	// TODO: Implement delete delayed
 }
 
 func (t *tui) HandleDeleteReady() {
-	fmt.Fprintf(t.cliOutput, "called DeleteReady\n")
+	// TODO: Implement delete ready
 }
 
 func (t *tui) HandleKick() {
-	fmt.Fprintf(t.cliOutput, "called Kick\n")
+	// TODO: Implement kick
 }
 
 func (t *tui) HandleKickAll() {
-	fmt.Fprintf(t.cliOutput, "called KickAll\n")
+	// TODO: Implement kick all
 }
 
 func (t *tui) HandlePause() {
-	fmt.Fprintf(t.cliOutput, "called Pause\n")
+	// TODO: Implement pause
 }
 
 func (t *tui) HandleDisconnect() {
-	fmt.Fprintf(t.cliOutput, "called Disconnect\n")
+	// TODO: Implement disconnect
 }
 
 func (t *tui) HandleExit() {
-	fmt.Fprintf(t.cliOutput, "called Exit\n")
+	// TODO: Implement exit
 }

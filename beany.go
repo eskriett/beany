@@ -56,7 +56,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else if *flagTui {
-		tui := NewTui(server, cli)
+		tui := NewTui(server)
 		tui.Run()
 	} else {
 		cli.shell.Run()
