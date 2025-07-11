@@ -53,26 +53,22 @@ func NewTui(server *server, cli *cli) *tui {
 	peekView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true)
-	peekView.SetBorder(true).SetTitle("Peek")
 	t.peekView = peekView
 
 	rightPane := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(peekView, 0, 1, false).
 		AddItem(cliOutput, 10, 1, false)
 
-	footer := tview.NewTextView().
-		SetDynamicColors(true)
-
 	funcKeyMap := map[int]string{
-		1: "Help",
-		2: "Setup",
-		3: "DeleteBuried",
-		4: "DeleteDelayed",
-		5: "DeleteReady",
-		6: "Kick",
-		7: "KickAll",
-		8: "Pause",
-		9: "Disconnect",
+		1:  "Help",
+		2:  "Setup",
+		3:  "DeleteBuried",
+		4:  "DeleteDelayed",
+		5:  "DeleteReady",
+		6:  "Kick",
+		7:  "KickAll",
+		8:  "Pause",
+		9:  "Disconnect",
 		10: "Exit",
 	}
 
@@ -80,7 +76,20 @@ func NewTui(server *server, cli *cli) *tui {
 	for i := 1; i <= 10; i++ {
 		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
 	}
-	footer.SetText(strings.Join(footerParts, " "))
+
+	footerKeysText := " " + strings.Join(footerParts, " ")
+	keysView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(footerKeysText)
+
+	versionView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignRight).
+		SetText("[::b]beany[-:-:-] --tui " + Version + " ")
+
+	footer := tview.NewFlex().
+		AddItem(keysView, tview.TaggedStringWidth(footerKeysText), 0, false).
+		AddItem(versionView, 0, 1, false)
 
 	grid := tview.NewGrid().
 		SetColumns(0, 0).
@@ -266,7 +275,8 @@ func (t *tui) updatePeekView() {
 			id, body, err := t.server.Peek(state, selectedTubeName)
 			if err == nil {
 				peekedSomething = true
-				peekContent.WriteString(fmt.Sprintf("[::b]Peek %s[-:-:-]\n", state))
+				colour := getStateColourName(state)
+				peekContent.WriteString(fmt.Sprintf("[white:%s:b]Peek %s[-:-:-]\n", colour, state))
 				peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
 				peekContent.WriteString(string(body) + "\n\n")
 			}
