@@ -98,10 +98,12 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF6:
 			t.HandleKick()
 		case tcell.KeyF7:
+			t.HandleKickAll()
+		case tcell.KeyF8:
 			t.HandlePause()
-		case tcell.KeyF11:
+		case tcell.KeyF9:
 			t.HandleDisconnect()
-		case tcell.KeyF12:
+		case tcell.KeyF10:
 			t.HandleExit()
 		}
 		return event
@@ -313,5 +315,5 @@ func (t *tui) HandleDisconnect() {
 }
 
 func (t *tui) HandleExit() {
-	// TODO: Implement exit
+	t.app.Stop()
 }
