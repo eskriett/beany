@@ -110,6 +110,13 @@ func NewTui(server *server) *tui {
 			t.HandleDisconnect()
 		case tcell.KeyF10:
 			t.HandleExit()
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'q':
+				t.HandleExit()
+			case '?':
+				t.HandleHelp()
+			}
 		}
 		return event
 	})
@@ -284,13 +291,16 @@ func (t *tui) updatePeekView() {
 }
 
 func (t *tui) HandleHelp() {
+	if t.pages.HasPage("help") {
+		t.pages.RemovePage("help")
+		return
+	}
+
 	modal := tview.NewModal().
 		SetText("Placeholder help"). // TODO
 		AddButtons([]string{"Close"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			if buttonLabel == "Close" {
-				t.pages.RemovePage("help")
-			}
+			t.pages.RemovePage("help")
 		})
 	t.pages.AddPage("help", modal, true, true)
 }
