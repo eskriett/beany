@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -8,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -19,6 +19,7 @@ type tui struct {
 	maxTubeNameLength int
 	mainList          *tview.List
 	peekView          *tview.TextView
+	outputView        *tview.TextView
 	tubes             []string
 	pages             *tview.Pages
 }
@@ -44,14 +45,23 @@ func NewTui(server *server) *tui {
 		SetScrollable(true)
 	t.peekView = peekView
 
+	outputView := tview.NewTextView()
+	outputView.SetDynamicColors(true)
+	t.outputView = outputView
+
+	rightPanel := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(peekView, 0, 1, false).
+		AddItem(outputView, 1, 0, false)
+
 	funcKeyMap := map[int]string{
 		1:  "Help",
 		2:  "Setup",
 		3:  "DeleteBuried",
 		4:  "DeleteDelayed",
 		5:  "DeleteReady",
-		6:  "Kick",
-		7:  "KickAll",
+		6:  "KickJobs",
+		7:  "KickAllTubes",
 		8:  "Pause",
 		9:  "Disconnect",
 		10: "Exit",
@@ -81,7 +91,7 @@ func NewTui(server *server) *tui {
 		SetRows(0, 1).
 		SetBorders(true).
 		AddItem(t.mainList, 0, 0, 1, 1, 0, 0, true).
-		AddItem(peekView, 0, 1, 1, 1, 0, 0, false).
+		AddItem(rightPanel, 0, 1, 1, 1, 0, 0, false).
 		AddItem(footer, 1, 0, 1, 2, 0, 0, false)
 
 	pages := tview.NewPages().
@@ -101,9 +111,9 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF5:
 			t.HandleDeleteReady()
 		case tcell.KeyF6:
-			t.HandleKick()
+			t.HandleKickJobs()
 		case tcell.KeyF7:
-			t.HandleKickAll()
+			t.HandleKickAllTubes()
 		case tcell.KeyF8:
 			t.HandlePause()
 		case tcell.KeyF9:
@@ -321,11 +331,33 @@ func (t *tui) HandleDeleteReady() {
 	// TODO: Implement delete ready
 }
 
-func (t *tui) HandleKick() {
-	// TODO: Implement kick
+func (t *tui) HandleKickJobs() {
+	currentSelection := t.mainList.GetCurrentItem()
+	if currentSelection < 0 || currentSelection >= len(t.tubes) {
+		t.OutputError(errors.New("invalid tube selection"))
+		return
+	}
+	currentTube := t.tubes[currentSelection]
+
+	stats, err := t.server.StatsTube(currentTube)
+	if err != nil {
+		t.OutputError(err)
+		return
+	}
+	toKick, err := strconv.Atoi(stats["current-jobs-buried"])
+	if err != nil {
+		t.OutputError(err)
+		return
+	}
+
+	if kicked, err := t.server.Kick(currentTube, toKick); err != nil {
+		t.OutputError(err)
+	} else {
+		t.OutputInfo(fmt.Sprintf("Kicked %v jobs", kicked))
+	}
 }
 
-func (t *tui) HandleKickAll() {
+func (t *tui) HandleKickAllTubes() {
 	// TODO: Implement kick all
 }
 
@@ -339,4 +371,12 @@ func (t *tui) HandleDisconnect() {
 
 func (t *tui) HandleExit() {
 	t.app.Stop()
+}
+
+func (t *tui) OutputError(err error) {
+	t.outputView.SetText(err.Error()) // TODO: Add colour
+}
+
+func (t *tui) OutputInfo(info string) {
+	t.outputView.SetText(info)
 }
