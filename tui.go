@@ -358,7 +358,34 @@ func (t *tui) HandleKickJobs() {
 }
 
 func (t *tui) HandleKickAllTubes() {
-	// TODO: Implement kick all
+	totalKickedJobs := 0
+	kickedTubes := 0
+	for _, tube := range t.tubes {
+		stats, err := t.server.StatsTube(tube)
+		if err != nil {
+			t.OutputError(fmt.Errorf("error getting stats for tube %s: %w", tube, err))
+			return
+		}
+		buriedCount, err := strconv.Atoi(stats["current-jobs-buried"])
+		if err != nil {
+			t.OutputError(fmt.Errorf("error parsing buried job count for tube %s: %w", tube, err))
+			return
+		}
+
+		if buriedCount > 0 {
+			kickedCount, err := t.server.Kick(tube, buriedCount)
+			if err != nil {
+				t.OutputError(fmt.Errorf("error kicking jobs in tube %s: %w", tube, err))
+				return
+			}
+			if kickedCount > 0 {
+				totalKickedJobs += kickedCount
+				kickedTubes++
+			}
+		}
+	}
+
+	t.OutputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
 func (t *tui) HandlePause() {
@@ -374,7 +401,7 @@ func (t *tui) HandleExit() {
 }
 
 func (t *tui) OutputError(err error) {
-	t.outputView.SetText(err.Error()) // TODO: Add colour
+	t.outputView.SetText(fmt.Sprintf("[red:]%s[-:-:-]", err.Error()))
 }
 
 func (t *tui) OutputInfo(info string) {
