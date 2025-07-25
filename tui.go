@@ -286,7 +286,27 @@ func (t *tui) updatePeekView() {
 				colour := getStateColourName(state)
 				peekContent.WriteString(fmt.Sprintf("[white:%s:b]Peek %s[-:-:-]\n", colour, state))
 				peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
-				peekContent.WriteString(string(body) + "\n\n")
+				peekContent.WriteString(string(body) + "\n")
+
+				stats, err := t.server.StatsJob(id)
+				if err == nil {
+					peekContent.WriteString(fmt.Sprintf("[white:%s:b]Stats %s[-:-:-]\n", colour, state))
+					for _, key := range sortedMapKeys(stats) {
+						if slices.Contains([]string{"age", "ttr", "time-left", "delay"}, key) {
+							// Append human-readable duration string e.g. 12m30s to duration fields
+							duration, err := time.ParseDuration(stats[key] + "s")
+							if err == nil {
+								ageHumanReadable := duration.String()
+								peekContent.WriteString(fmt.Sprintf("%s: %s [darkgray:](%s)[-:-:-]\n", key, stats[key], ageHumanReadable))
+							} else {
+								peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
+							}
+						} else {
+							peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
+						}
+					}
+					peekContent.WriteString("\n")
+				}
 			}
 		}
 
