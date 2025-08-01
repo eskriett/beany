@@ -64,7 +64,7 @@ func NewTui(server *server) *tui {
 	versionView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignRight).
-		SetText("[::b]beany[-:-:-] --tui " + Version + " ")
+		SetText("[::b]beany[-:-:-] --tui " + Version + " ") // TODO t.server.ConnectionStr() might be useful, would need to make the whole footer updateable
 
 	footer := tview.NewFlex().
 		AddItem(keysView, tview.TaggedStringWidth(t.keysView.GetText(true)), 0, false).
@@ -438,7 +438,6 @@ func (t *tui) HandlePause() {
 
 func (t *tui) HandleConnectDisconnect() {
 	// TODO: Implement disconnect - it doesn't clear the main list properly, and needs a way of reconnecting afterwards
-	// TODO change the Disconnect button to Connect and vice versa
 	if t.server.isConnected() {
 		if err := t.server.Disconnect(); err != nil {
 			t.OutputError(err)
@@ -451,7 +450,51 @@ func (t *tui) HandleConnectDisconnect() {
 			t.SetupKeysView()
 		}
 	} else {
-		// TODO: Implement connect - need to show a modal with a text input for the host and port
+		form := tview.NewForm()
+		form.AddInputField("Host (defaults to localhost)", "", 20, nil, nil).
+			AddInputField("Port (defaults to 11300)", "", 6, nil, nil).
+			AddButton("Connect", func() {
+				t.pages.RemovePage("connect")
+				t.OutputInfo("Connecting...")
+
+				host := form.GetFormItem(0).(*tview.InputField).GetText()
+				if host == "" {
+					host = "localhost"
+				}
+				portStr := form.GetFormItem(1).(*tview.InputField).GetText()
+				if portStr == "" {
+					portStr = "11300"
+				}
+
+				go func() {
+					port, err := strconv.Atoi(portStr)
+					if err != nil {
+						t.app.QueueUpdateDraw(func() {
+							t.OutputError(fmt.Errorf("invalid port: %w", err))
+						})
+						return
+					}
+
+					if err := t.server.Connect(host, port); err != nil {
+						t.app.QueueUpdateDraw(func() {
+							t.OutputError(err)
+						})
+						return
+					}
+
+					t.app.QueueUpdateDraw(func() {
+						address := fmt.Sprintf("%s:%d", host, port)
+						t.OutputInfo("Connected to " + address)
+						t.updater.Reset(1 * time.Second)
+						t.SetupKeysView()
+					})
+				}()
+			}).
+			AddButton("Cancel", func() {
+				t.pages.RemovePage("connect")
+			})
+		form.SetBorder(true).SetTitle("Connect to beanstalkd").SetTitleAlign(tview.AlignLeft)
+		t.pages.AddPage("connect", form, true, true)
 	}
 }
 
