@@ -232,13 +232,8 @@ func (t *tui) Update() {
 		}
 		t.maxTubeNameLength = newMaxLength
 
-		// Preserve selection
-		selectedTubeIndex := t.mainList.GetCurrentItem()
-		var selectedTubeText string
-		if selectedTubeIndex >= 0 && t.mainList.GetItemCount() > 0 && selectedTubeIndex < t.mainList.GetItemCount() {
-			selectedTubeName, _ := t.mainList.GetItemText(selectedTubeIndex)
-			selectedTubeText = selectedTubeName
-		}
+		// Preserve selection by getting the name of the current tube
+		selectedTubeName, _ := t.GetCurrentTube()
 
 		t.mainList.Clear()
 
@@ -255,15 +250,13 @@ func (t *tui) Update() {
 			}
 			rowString := t.BuildListRow(tube, stats)
 			t.mainList.AddItem(rowString, "", 0, nil)
-			if rowString == selectedTubeText {
+			if tube == selectedTubeName {
 				newSelectedTubeIndex = i
 			}
 		}
 
 		if newSelectedTubeIndex != -1 {
 			t.mainList.SetCurrentItem(newSelectedTubeIndex)
-		} else if selectedTubeIndex < t.mainList.GetItemCount() {
-			t.mainList.SetCurrentItem(selectedTubeIndex)
 		}
 
 		t.updatePeekView()
@@ -273,51 +266,59 @@ func (t *tui) Update() {
 func (t *tui) updatePeekView() {
 	// Peek at the selected tube
 	t.peekView.Clear()
-	currentSelection := t.mainList.GetCurrentItem()
-	if currentSelection >= 0 && currentSelection < len(t.tubes) {
-		selectedTubeName := t.tubes[currentSelection]
+	currentTube, err := t.GetCurrentTube()
+	if err != nil {
+		t.OutputError(err)
+		return
+	}
 
-		var peekContent strings.Builder
-		var peekedSomething bool
-		for _, state := range []string{"ready", "delayed", "buried"} {
-			id, body, err := t.server.Peek(state, selectedTubeName)
+	var peekContent strings.Builder
+	var peekedSomething bool
+	for _, state := range []string{"ready", "delayed", "buried"} {
+		id, body, err := t.server.Peek(state, currentTube)
+		if err == nil {
+			peekedSomething = true
+			colour := getStateColourName(state)
+			peekContent.WriteString(fmt.Sprintf("[white:%s:b]Peek %s[-:-:-]\n", colour, state))
+			peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
+			peekContent.WriteString(string(body) + "\n")
+
+			stats, err := t.server.StatsJob(id)
 			if err == nil {
-				peekedSomething = true
-				colour := getStateColourName(state)
-				peekContent.WriteString(fmt.Sprintf("[white:%s:b]Peek %s[-:-:-]\n", colour, state))
-				peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
-				peekContent.WriteString(string(body) + "\n")
-
-				stats, err := t.server.StatsJob(id)
-				if err == nil {
-					peekContent.WriteString(fmt.Sprintf("[white:%s:b]Stats %s[-:-:-]\n", colour, state))
-					for _, key := range sortedMapKeys(stats) {
-						if slices.Contains([]string{"age", "ttr", "time-left", "delay"}, key) {
-							// Append human-readable duration string e.g. 12m30s to duration fields
-							duration, err := time.ParseDuration(stats[key] + "s")
-							if err == nil {
-								ageHumanReadable := duration.String()
-								peekContent.WriteString(fmt.Sprintf("%s: %s [darkgray:](%s)[-:-:-]\n", key, stats[key], ageHumanReadable))
-							} else {
-								peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
-							}
+				peekContent.WriteString(fmt.Sprintf("[white:%s:b]Stats %s[-:-:-]\n", colour, state))
+				for _, key := range sortedMapKeys(stats) {
+					if slices.Contains([]string{"age", "ttr", "time-left", "delay"}, key) {
+						// Append human-readable duration string e.g. 12m30s to duration fields
+						duration, err := time.ParseDuration(stats[key] + "s")
+						if err == nil {
+							ageHumanReadable := duration.String()
+							peekContent.WriteString(fmt.Sprintf("%s: %s [darkgray:](%s)[-:-:-]\n", key, stats[key], ageHumanReadable))
 						} else {
 							peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
 						}
+					} else {
+						peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
 					}
-					peekContent.WriteString("\n")
 				}
+				peekContent.WriteString("\n")
 			}
 		}
-
-		if !peekedSomething {
-			t.peekView.SetText(fmt.Sprintf("No jobs to peek in %s.", selectedTubeName))
-		} else {
-			t.peekView.SetText(peekContent.String())
-		}
-	} else {
-		t.peekView.SetText("Select a tube to peek jobs.")
 	}
+
+	if !peekedSomething {
+		t.peekView.SetText(fmt.Sprintf("No jobs to peek in %s.", currentTube))
+	} else {
+		t.peekView.SetText(peekContent.String())
+	}
+
+}
+
+func (t *tui) GetCurrentTube() (string, error) {
+	currentSelection := t.mainList.GetCurrentItem()
+	if currentSelection < 0 || currentSelection >= len(t.tubes) {
+		return "", errors.New("no tube selected")
+	}
+	return t.tubes[currentSelection], nil
 }
 
 func (t *tui) HandleHelp() {
@@ -352,12 +353,11 @@ func (t *tui) HandleDeleteReady() {
 }
 
 func (t *tui) HandleKickJobs() {
-	currentSelection := t.mainList.GetCurrentItem()
-	if currentSelection < 0 || currentSelection >= len(t.tubes) {
-		t.OutputError(errors.New("invalid tube selection"))
+	currentTube, err := t.GetCurrentTube()
+	if err != nil {
+		t.OutputError(err)
 		return
 	}
-	currentTube := t.tubes[currentSelection]
 
 	stats, err := t.server.StatsTube(currentTube)
 	if err != nil {
