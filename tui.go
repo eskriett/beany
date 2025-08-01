@@ -22,6 +22,8 @@ type tui struct {
 	outputView        *tview.TextView
 	tubes             []string
 	pages             *tview.Pages
+	updater           *time.Ticker
+	keysView          *tview.TextView
 }
 
 func NewTui(server *server) *tui {
@@ -54,28 +56,10 @@ func NewTui(server *server) *tui {
 		AddItem(peekView, 0, 1, false).
 		AddItem(outputView, 1, 0, false)
 
-	funcKeyMap := map[int]string{
-		1:  "Help",
-		2:  "Setup",
-		3:  "DeleteBuried",
-		4:  "DeleteDelayed",
-		5:  "DeleteReady",
-		6:  "KickJobs",
-		7:  "KickAllTubes",
-		8:  "Pause",
-		9:  "Disconnect",
-		10: "Exit",
-	}
-
-	var footerParts []string
-	for i := 1; i <= 10; i++ {
-		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
-	}
-
-	footerKeysText := " " + strings.Join(footerParts, " ")
 	keysView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetText(footerKeysText)
+		SetDynamicColors(true)
+	t.keysView = keysView
+	t.SetupKeysView()
 
 	versionView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -83,7 +67,7 @@ func NewTui(server *server) *tui {
 		SetText("[::b]beany[-:-:-] --tui " + Version + " ")
 
 	footer := tview.NewFlex().
-		AddItem(keysView, tview.TaggedStringWidth(footerKeysText), 0, false).
+		AddItem(keysView, tview.TaggedStringWidth(t.keysView.GetText(true)), 0, false).
 		AddItem(versionView, 0, 1, false)
 
 	grid := tview.NewGrid().
@@ -117,7 +101,7 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF8:
 			t.HandlePause()
 		case tcell.KeyF9:
-			t.HandleDisconnect()
+			t.HandleConnectDisconnect()
 		case tcell.KeyF10:
 			t.HandleExit()
 		case tcell.KeyRune:
@@ -134,6 +118,33 @@ func NewTui(server *server) *tui {
 	app.SetRoot(pages, true)
 	t.app = app
 	return t
+}
+
+func (t *tui) SetupKeysView() {
+	connectString := "Connect"
+	if t.server.isConnected() {
+		connectString = "Disconnect"
+	}
+	funcKeyMap := map[int]string{
+		1:  "Help",
+		2:  "Setup",
+		3:  "DeleteBuried",
+		4:  "DeleteDelayed",
+		5:  "DeleteReady",
+		6:  "KickJobs",
+		7:  "KickAllTubes",
+		8:  "Pause",
+		9:  connectString,
+		10: "Exit",
+	}
+
+	var footerParts []string
+	for i := 1; i <= 10; i++ {
+		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
+	}
+
+	footerKeysText := " " + strings.Join(footerParts, " ")
+	t.keysView.SetText(footerKeysText)
 }
 
 func (t *tui) BuildListRow(tube string, stats map[string]string) string {
@@ -195,10 +206,10 @@ func (t *tui) Run() {
 	go func() {
 		t.Update()
 
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
+		t.updater = time.NewTicker(1 * time.Second)
+		defer t.updater.Stop()
 
-		for range ticker.C {
+		for range t.updater.C {
 			t.Update()
 		}
 	}()
@@ -209,12 +220,24 @@ func (t *tui) Run() {
 }
 
 func (t *tui) Update() {
+	if !t.server.isConnected() {
+		t.OutputError(errors.New("not connected to a beanstalk server"))
+		return
+	}
+
 	tubeStats, err := t.server.GetTubeStats()
 	if err != nil {
 		panic(err)
 	}
 
 	t.app.QueueUpdateDraw(func() {
+		// This check prevents a race condition where an update is queued
+		// right before a disconnect, which would otherwise cause the list
+		// to be repopulated after being cleared in HandleDisconnect.
+		if !t.server.isConnected() {
+			return
+		}
+
 		// Preserve selection by getting the name of the current tube.
 		// This must be done before t.tubes is modified.
 		selectedTubeName, _ := t.GetCurrentTube()
@@ -413,8 +436,23 @@ func (t *tui) HandlePause() {
 	// TODO: Implement pause
 }
 
-func (t *tui) HandleDisconnect() {
-	// TODO: Implement disconnect
+func (t *tui) HandleConnectDisconnect() {
+	// TODO: Implement disconnect - it doesn't clear the main list properly, and needs a way of reconnecting afterwards
+	// TODO change the Disconnect button to Connect and vice versa
+	if t.server.isConnected() {
+		if err := t.server.Disconnect(); err != nil {
+			t.OutputError(err)
+		} else {
+			t.OutputInfo("Disconnected from beanstalk server. Press F9 to connect.")
+			t.updater.Stop()
+			t.mainList.Clear()
+			t.peekView.Clear()
+			t.tubes = make([]string, 0)
+			t.SetupKeysView()
+		}
+	} else {
+		// TODO: Implement connect - need to show a modal with a text input for the host and port
+	}
 }
 
 func (t *tui) HandleExit() {
