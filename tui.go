@@ -215,6 +215,10 @@ func (t *tui) Update() {
 	}
 
 	t.app.QueueUpdateDraw(func() {
+		// Preserve selection by getting the name of the current tube.
+		// This must be done before t.tubes is modified.
+		selectedTubeName, _ := t.GetCurrentTube()
+
 		// Add any new tubes to our list
 		for tube, stats := range tubeStats {
 			if t.tubeCurrentlyActive(stats) && !slices.Contains(t.tubes, tube) {
@@ -231,9 +235,6 @@ func (t *tui) Update() {
 			}
 		}
 		t.maxTubeNameLength = newMaxLength
-
-		// Preserve selection by getting the name of the current tube
-		selectedTubeName, _ := t.GetCurrentTube()
 
 		t.mainList.Clear()
 
