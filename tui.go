@@ -152,7 +152,11 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 
 	// Add tube name cell
 	namePadding := strings.Repeat(" ", t.maxTubeNameLength-len(tube))
-	rowParts = append(rowParts, fmt.Sprintf("%s%s ", tube, namePadding))
+	tubeNameColour := ""
+	if !tubeCurrentlyActive(stats) {
+		tubeNameColour = "darkgray"
+	}
+	rowParts = append(rowParts, fmt.Sprintf("[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding))
 
 	// Add state cells
 	for _, state := range []string{"ready", "delayed", "buried"} {
@@ -170,7 +174,7 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 	return strings.Join(rowParts, "")
 }
 
-func (t *tui) tubeCurrentlyActive(stats map[string]string) bool {
+func tubeCurrentlyActive(stats map[string]string) bool {
 	for _, state := range []string{"ready", "delayed", "buried"} {
 		val, _ := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", state)])
 		if val > 0 {
@@ -244,7 +248,7 @@ func (t *tui) Update() {
 
 		// Add any new tubes to our list
 		for tube, stats := range tubeStats {
-			if t.tubeCurrentlyActive(stats) && !slices.Contains(t.tubes, tube) {
+			if tubeCurrentlyActive(stats) && !slices.Contains(t.tubes, tube) {
 				t.tubes = append(t.tubes, tube)
 			}
 		}
