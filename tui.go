@@ -398,6 +398,14 @@ func (t *tui) HandleKickJobs() {
 		return
 	}
 
+	if toKick == 0 {
+		toKick, err = strconv.Atoi(stats["current-jobs-delayed"])
+		if err != nil {
+			t.OutputError(err)
+			return
+		}
+	}
+
 	if kicked, err := t.server.Kick(currentTube, toKick); err != nil {
 		t.OutputError(err)
 	} else {
