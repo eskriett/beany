@@ -444,8 +444,19 @@ func (t *tui) HandleKickAllTubes() {
 	t.OutputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
-func (t *tui) HandlePause() {
-	// TODO: Implement pause
+func (t *tui) HandlePause() { // TODO this is untested, and unpause doesn't even seem to be supported by the client library - remove pause? or maybe you can pass a special value to Pause() to unpause?
+	currentTube, err := t.GetCurrentTube()
+	if err != nil {
+		t.OutputError(err)
+		return
+	}
+
+	if err := t.server.Pause(currentTube); err != nil {
+		t.OutputError(err)
+		return
+	}
+
+	t.OutputInfo(fmt.Sprintf("Paused tube %s", currentTube))
 }
 
 func (t *tui) HandleConnectDisconnect() {

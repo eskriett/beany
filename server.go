@@ -257,3 +257,11 @@ func (s *server) UseTube(name string) {
 	}
 	s.bs.Tube = newTube
 }
+
+func (s *server) Pause(name string) error {
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
+	return tube.Pause(0)
+}
