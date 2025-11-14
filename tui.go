@@ -156,6 +156,9 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 	if !tubeCurrentlyActive(stats) {
 		tubeNameColour = "darkgray"
 	}
+	if stats["pause-time-left"] != "0" {
+		tubeNameColour = "lightblue"
+	}
 	rowParts = append(rowParts, fmt.Sprintf("[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding))
 
 	// Add state cells
@@ -171,6 +174,11 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 	}
 
 	rowParts = append(rowParts, " ")
+
+	if stats["pause-time-left"] != "0" {
+		rowParts = append(rowParts, fmt.Sprintf("[lightblue:]* PAUSED: %s *[-:-:-]", secondsToHumanReadable(stats["pause-time-left"])))
+	}
+
 	return strings.Join(rowParts, "")
 }
 
@@ -317,13 +325,10 @@ func (t *tui) updatePeekView() {
 				for _, key := range sortedMapKeys(stats) {
 					if slices.Contains([]string{"age", "ttr", "time-left", "delay"}, key) {
 						// Append human-readable duration string e.g. 12m30s to duration fields
-						duration, err := time.ParseDuration(stats[key] + "s")
-						if err == nil {
-							ageHumanReadable := duration.String()
-							peekContent.WriteString(fmt.Sprintf("%s: %s [darkgray:](%s)[-:-:-]\n", key, stats[key], ageHumanReadable))
-						} else {
-							peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
-						}
+						peekContent.WriteString(fmt.Sprintf(
+							"%s: %s [darkgray:](%s)[-:-:-]\n",
+							key, stats[key], secondsToHumanReadable(stats[key]),
+						))
 					} else {
 						peekContent.WriteString(fmt.Sprintf("%s: %s\n", key, stats[key]))
 					}
@@ -338,7 +343,15 @@ func (t *tui) updatePeekView() {
 	} else {
 		t.peekView.SetText(peekContent.String())
 	}
+}
 
+func secondsToHumanReadable(seconds string) string {
+	duration, err := time.ParseDuration(seconds + "s")
+	if err == nil {
+		return duration.String()
+	} else {
+		return "" // This error doesn't matter, just omit the human readable duration
+	}
 }
 
 func (t *tui) GetCurrentTube() (string, error) {
@@ -444,19 +457,19 @@ func (t *tui) HandleKickAllTubes() {
 	t.OutputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
-func (t *tui) HandlePause() { // TODO this is untested, and unpause doesn't even seem to be supported by the client library - remove pause? or maybe you can pass a special value to Pause() to unpause?
+func (t *tui) HandlePause() { // TODO pause should be a modal with a duration input field, and an option to unpause
 	currentTube, err := t.GetCurrentTube()
 	if err != nil {
 		t.OutputError(err)
 		return
 	}
 
-	if err := t.server.Pause(currentTube); err != nil {
+	if err := t.server.Pause(currentTube, 3600*time.Second); err != nil {
 		t.OutputError(err)
 		return
 	}
 
-	t.OutputInfo(fmt.Sprintf("Paused tube %s", currentTube))
+	t.OutputInfo(fmt.Sprintf("Paused tube %s for 1 hour", currentTube))
 }
 
 func (t *tui) HandleConnectDisconnect() {
