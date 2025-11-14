@@ -457,19 +457,38 @@ func (t *tui) HandleKickAllTubes() {
 	t.OutputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
-func (t *tui) HandlePause() { // TODO pause should be a modal with a duration input field, and an option to unpause
+func (t *tui) HandlePause() {
 	currentTube, err := t.GetCurrentTube()
 	if err != nil {
 		t.OutputError(err)
 		return
 	}
 
-	if err := t.server.Pause(currentTube, 3600*time.Second); err != nil {
-		t.OutputError(err)
+	if t.pages.HasPage("pause") {
+		t.pages.RemovePage("pause")
 		return
 	}
 
-	t.OutputInfo(fmt.Sprintf("Paused tube %s for 1 hour", currentTube))
+	modal := tview.NewModal().
+		SetText("Pause tube to prevent jobs from being reserved").
+		AddButtons([]string{"Cancel", "Pause for 1 hour", "Unpause"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonIndex == 1 {
+				if err := t.server.Pause(currentTube, 3600*time.Second); err != nil {
+					t.OutputError(err)
+					return
+				}
+				t.OutputInfo(fmt.Sprintf("Paused tube %s for 1 hour", currentTube))
+			} else if buttonIndex == 2 {
+				if err := t.server.Unpause(currentTube); err != nil {
+					t.OutputError(err)
+					return
+				}
+				t.OutputInfo(fmt.Sprintf("Unpaused tube %s", currentTube))
+			}
+			t.pages.RemovePage("pause")
+		})
+	t.pages.AddPage("pause", modal, true, true)
 }
 
 func (t *tui) HandleConnectDisconnect() {
