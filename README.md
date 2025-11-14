@@ -121,9 +121,10 @@ MIT
 Library | Use
 ------- | -----
 [github.com/abiosoft/ishell](https://github.com/abiosoft/ishell) | interactive shell library
-[github.com/kr/beanstalk](https://github.com/kr/beanstalk) | beanstalk client
+[github.com/beanstalkd/go-beanstalk](https://github.com/beanstalkd/go-beanstalk) | beanstalk client
 [github.com/fatih/color](https://github.com/fatih/color) | colour output
 [github.com/olekukonko/tablewriter](https://github.com/olekukonko/tablewriter) | ascii table
+[github.com/rivo/tview](https://github.com/rivo/tview) | tui library
 
 Also thanks to [beanwalker](https://github.com/kadekcipta/beanwalker) for the
 initial inspiration for this tool
