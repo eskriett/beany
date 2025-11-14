@@ -156,7 +156,7 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 	if !tubeCurrentlyActive(stats) {
 		tubeNameColour = "darkgray"
 	}
-	if stats["pause-time-left"] != "0" {
+	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
 		tubeNameColour = "lightblue"
 	}
 	rowParts = append(rowParts, fmt.Sprintf("[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding))
@@ -175,11 +175,11 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 
 	rowParts = append(rowParts, " ")
 
-	if stats["pause-time-left"] != "0" {
+	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
 		rowParts = append(rowParts, fmt.Sprintf("[lightblue:]* PAUSED: %s *[-:-:-]", secondsToHumanReadable(stats["pause-time-left"])))
 	}
 
-	return strings.Join(rowParts, "")
+	return strings.Join(rowParts, "") // TODO replace with strings.Builder
 }
 
 func tubeCurrentlyActive(stats map[string]string) bool {
@@ -383,14 +383,49 @@ func (t *tui) handleSetup() {
 
 func (t *tui) handleDeleteBuried() {
 	// TODO: Implement delete buried
+	t.handleDeleteAll("buried")
 }
 
 func (t *tui) handleDeleteDelayed() {
 	// TODO: Implement delete delayed
+	t.handleDeleteAll("delayed")
 }
 
 func (t *tui) handleDeleteReady() {
 	// TODO: Implement delete ready
+	t.handleDeleteAll("ready") // TODO this works but shows an error "peek-ready: not found"
+}
+
+func (t *tui) handleDeleteAll(state string) {
+	currentTube, err := t.getCurrentTube()
+	if err != nil {
+		t.outputError(err)
+		return
+	}
+
+	stats, err := t.server.StatsTube(currentTube)
+	if err != nil {
+		t.outputError(err)
+		return
+	}
+	expectedCount, err := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", state)])
+	if err != nil {
+		t.outputError(err)
+		return
+	}
+
+	if expectedCount == 0 {
+		t.outputInfo(fmt.Sprintf("No %s jobs to delete", state))
+		return
+	}
+
+	actualCount, err := t.server.DeleteAll(state, currentTube)
+	if err != nil {
+		t.outputError(err)
+		return
+	}
+
+	t.outputInfo(fmt.Sprintf("Deleted %d %s jobs", actualCount, state))
 }
 
 func (t *tui) handleKickJobs() {
