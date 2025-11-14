@@ -59,7 +59,7 @@ func NewTui(server *server) *tui {
 	keysView := tview.NewTextView().
 		SetDynamicColors(true)
 	t.keysView = keysView
-	t.SetupKeysView()
+	t.setupKeysView()
 
 	versionView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -85,31 +85,31 @@ func NewTui(server *server) *tui {
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
 		case tcell.KeyF1:
-			t.HandleHelp()
+			t.handleHelp()
 		case tcell.KeyF2:
-			t.HandleSetup()
+			t.handleSetup()
 		case tcell.KeyF3:
-			t.HandleDeleteBuried()
+			t.handleDeleteBuried()
 		case tcell.KeyF4:
-			t.HandleDeleteDelayed()
+			t.handleDeleteDelayed()
 		case tcell.KeyF5:
-			t.HandleDeleteReady()
+			t.handleDeleteReady()
 		case tcell.KeyF6:
-			t.HandleKickJobs()
+			t.handleKickJobs()
 		case tcell.KeyF7:
-			t.HandleKickAllTubes()
+			t.handleKickAllTubes()
 		case tcell.KeyF8:
-			t.HandlePause()
+			t.handlePause()
 		case tcell.KeyF9:
-			t.HandleConnectDisconnect()
+			t.handleConnectDisconnect()
 		case tcell.KeyF10:
-			t.HandleExit()
+			t.handleExit()
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case 'q':
-				t.HandleExit()
+				t.handleExit()
 			case '?':
-				t.HandleHelp()
+				t.handleHelp()
 			}
 		}
 		return event
@@ -120,7 +120,7 @@ func NewTui(server *server) *tui {
 	return t
 }
 
-func (t *tui) SetupKeysView() {
+func (t *tui) setupKeysView() {
 	connectString := "Connect"
 	if t.server.isConnected() {
 		connectString = "Disconnect"
@@ -147,7 +147,7 @@ func (t *tui) SetupKeysView() {
 	t.keysView.SetText(footerKeysText)
 }
 
-func (t *tui) BuildListRow(tube string, stats map[string]string) string {
+func (t *tui) buildListRow(tube string, stats map[string]string) string {
 	var rowParts []string
 
 	// Add tube name cell
@@ -164,7 +164,7 @@ func (t *tui) BuildListRow(tube string, stats map[string]string) string {
 	// Add state cells
 	for _, state := range []string{"ready", "delayed", "buried"} {
 		value := stats[fmt.Sprintf("current-jobs-%s", state)]
-		width := GetCellWidth(value)
+		width := getCellWidth(value)
 		if width > 0 {
 			colourName := getStateColourName(state)
 			// Right-align the value with padding
@@ -205,7 +205,7 @@ func getStateColourName(state string) string {
 	}
 }
 
-func GetCellWidth(contents string) int {
+func getCellWidth(contents string) int {
 	val, _ := strconv.Atoi(contents)
 	if val == 0 {
 		return 0
@@ -216,13 +216,13 @@ func GetCellWidth(contents string) int {
 
 func (t *tui) Run() {
 	go func() {
-		t.Update()
+		t.update()
 
 		t.updater = time.NewTicker(1 * time.Second)
 		defer t.updater.Stop()
 
 		for range t.updater.C {
-			t.Update()
+			t.update()
 		}
 	}()
 
@@ -231,9 +231,9 @@ func (t *tui) Run() {
 	}
 }
 
-func (t *tui) Update() {
+func (t *tui) update() {
 	if !t.server.isConnected() {
-		t.OutputError(errors.New("not connected to a beanstalk server"))
+		t.outputError(errors.New("not connected to a beanstalk server"))
 		return
 	}
 
@@ -252,7 +252,7 @@ func (t *tui) Update() {
 
 		// Preserve selection by getting the name of the current tube.
 		// This must be done before t.tubes is modified.
-		selectedTubeName, _ := t.GetCurrentTube()
+		selectedTubeName, _ := t.getCurrentTube()
 
 		// Add any new tubes to our list
 		for tube, stats := range tubeStats {
@@ -284,7 +284,7 @@ func (t *tui) Update() {
 					"current-jobs-buried":  "0",
 				}
 			}
-			rowString := t.BuildListRow(tube, stats)
+			rowString := t.buildListRow(tube, stats)
 			t.mainList.AddItem(rowString, "", 0, nil)
 			if tube == selectedTubeName {
 				newSelectedTubeIndex = i
@@ -302,9 +302,9 @@ func (t *tui) Update() {
 func (t *tui) updatePeekView() {
 	// Peek at the selected tube
 	t.peekView.Clear()
-	currentTube, err := t.GetCurrentTube()
+	currentTube, err := t.getCurrentTube()
 	if err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 		return
 	}
 
@@ -354,7 +354,7 @@ func secondsToHumanReadable(seconds string) string {
 	}
 }
 
-func (t *tui) GetCurrentTube() (string, error) {
+func (t *tui) getCurrentTube() (string, error) {
 	currentSelection := t.mainList.GetCurrentItem()
 	if currentSelection < 0 || currentSelection >= len(t.tubes) {
 		return "", errors.New("no tube selected")
@@ -362,7 +362,7 @@ func (t *tui) GetCurrentTube() (string, error) {
 	return t.tubes[currentSelection], nil
 }
 
-func (t *tui) HandleHelp() {
+func (t *tui) handleHelp() {
 	if t.pages.HasPage("help") {
 		t.pages.RemovePage("help")
 		return
@@ -377,74 +377,74 @@ func (t *tui) HandleHelp() {
 	t.pages.AddPage("help", modal, true, true)
 }
 
-func (t *tui) HandleSetup() {
+func (t *tui) handleSetup() {
 	// TODO: Implement setup
 }
 
-func (t *tui) HandleDeleteBuried() {
+func (t *tui) handleDeleteBuried() {
 	// TODO: Implement delete buried
 }
 
-func (t *tui) HandleDeleteDelayed() {
+func (t *tui) handleDeleteDelayed() {
 	// TODO: Implement delete delayed
 }
 
-func (t *tui) HandleDeleteReady() {
+func (t *tui) handleDeleteReady() {
 	// TODO: Implement delete ready
 }
 
-func (t *tui) HandleKickJobs() {
-	currentTube, err := t.GetCurrentTube()
+func (t *tui) handleKickJobs() {
+	currentTube, err := t.getCurrentTube()
 	if err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 		return
 	}
 
 	stats, err := t.server.StatsTube(currentTube)
 	if err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 		return
 	}
 	toKick, err := strconv.Atoi(stats["current-jobs-buried"])
 	if err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 		return
 	}
 
 	if toKick == 0 {
 		toKick, err = strconv.Atoi(stats["current-jobs-delayed"])
 		if err != nil {
-			t.OutputError(err)
+			t.outputError(err)
 			return
 		}
 	}
 
 	if kicked, err := t.server.Kick(currentTube, toKick); err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 	} else {
-		t.OutputInfo(fmt.Sprintf("Kicked %v jobs", kicked))
+		t.outputInfo(fmt.Sprintf("Kicked %v jobs", kicked))
 	}
 }
 
-func (t *tui) HandleKickAllTubes() {
+func (t *tui) handleKickAllTubes() {
 	totalKickedJobs := 0
 	kickedTubes := 0
 	for _, tube := range t.tubes {
 		stats, err := t.server.StatsTube(tube)
 		if err != nil {
-			t.OutputError(fmt.Errorf("error getting stats for tube %s: %w", tube, err))
+			t.outputError(fmt.Errorf("error getting stats for tube %s: %w", tube, err))
 			return
 		}
 		buriedCount, err := strconv.Atoi(stats["current-jobs-buried"])
 		if err != nil {
-			t.OutputError(fmt.Errorf("error parsing buried job count for tube %s: %w", tube, err))
+			t.outputError(fmt.Errorf("error parsing buried job count for tube %s: %w", tube, err))
 			return
 		}
 
 		if buriedCount > 0 {
 			kickedCount, err := t.server.Kick(tube, buriedCount)
 			if err != nil {
-				t.OutputError(fmt.Errorf("error kicking jobs in tube %s: %w", tube, err))
+				t.outputError(fmt.Errorf("error kicking jobs in tube %s: %w", tube, err))
 				return
 			}
 			if kickedCount > 0 {
@@ -454,13 +454,13 @@ func (t *tui) HandleKickAllTubes() {
 		}
 	}
 
-	t.OutputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
+	t.outputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
-func (t *tui) HandlePause() {
-	currentTube, err := t.GetCurrentTube()
+func (t *tui) handlePause() {
+	currentTube, err := t.getCurrentTube()
 	if err != nil {
-		t.OutputError(err)
+		t.outputError(err)
 		return
 	}
 
@@ -475,23 +475,23 @@ func (t *tui) HandlePause() {
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 			if buttonIndex == 1 {
 				if err := t.server.Pause(currentTube, 3600*time.Second); err != nil {
-					t.OutputError(err)
+					t.outputError(err)
 					return
 				}
-				t.OutputInfo(fmt.Sprintf("Paused tube %s for 1 hour", currentTube))
+				t.outputInfo(fmt.Sprintf("Paused tube %s for 1 hour", currentTube))
 			} else if buttonIndex == 2 {
 				if err := t.server.Unpause(currentTube); err != nil {
-					t.OutputError(err)
+					t.outputError(err)
 					return
 				}
-				t.OutputInfo(fmt.Sprintf("Unpaused tube %s", currentTube))
+				t.outputInfo(fmt.Sprintf("Unpaused tube %s", currentTube))
 			}
 			t.pages.RemovePage("pause")
 		})
 	t.pages.AddPage("pause", modal, true, true)
 }
 
-func (t *tui) HandleConnectDisconnect() {
+func (t *tui) handleConnectDisconnect() {
 	if t.pages.HasPage("connect") {
 		t.pages.RemovePage("connect")
 		return
@@ -499,15 +499,15 @@ func (t *tui) HandleConnectDisconnect() {
 
 	if t.server.isConnected() {
 		if err := t.server.Disconnect(); err != nil {
-			t.OutputError(err)
+			t.outputError(err)
 		} else {
-			t.OutputInfo("Disconnected from beanstalk server. Press F9 to connect.")
+			t.outputInfo("Disconnected from beanstalk server. Press F9 to connect.")
 			t.updater.Stop()
 			t.mainList.Clear()
 			t.mainList.AddItem("Not connected to a beanstalk server. Press F9 to connect.", "", 0, nil)
 			t.peekView.Clear()
 			t.tubes = make([]string, 0)
-			t.SetupKeysView()
+			t.setupKeysView()
 		}
 	} else {
 		form := tview.NewForm()
@@ -515,7 +515,7 @@ func (t *tui) HandleConnectDisconnect() {
 			AddInputField("Port (defaults to 11300)", "", 6, nil, nil).
 			AddButton("Connect", func() {
 				t.pages.RemovePage("connect")
-				t.OutputInfo("Connecting...")
+				t.outputInfo("Connecting...")
 
 				host := form.GetFormItem(0).(*tview.InputField).GetText()
 				if host == "" {
@@ -530,14 +530,14 @@ func (t *tui) HandleConnectDisconnect() {
 					port, err := strconv.Atoi(portStr)
 					if err != nil {
 						t.app.QueueUpdateDraw(func() {
-							t.OutputError(fmt.Errorf("invalid port: %w", err))
+							t.outputError(fmt.Errorf("invalid port: %w", err))
 						})
 						return
 					}
 
 					if err := t.server.Connect(host, port); err != nil {
 						t.app.QueueUpdateDraw(func() {
-							t.OutputError(err)
+							t.outputError(err)
 						})
 						return
 					}
@@ -547,9 +547,9 @@ func (t *tui) HandleConnectDisconnect() {
 					t.mainList.AddItem("Waiting for data from " + address + "...", "", 0, nil)
 
 					t.app.QueueUpdateDraw(func() {
-						t.OutputInfo("Connected to " + address)
+						t.outputInfo("Connected to " + address)
 						t.updater.Reset(1 * time.Second)
-						t.SetupKeysView()
+						t.setupKeysView()
 					})
 				}()
 			}).
@@ -561,14 +561,14 @@ func (t *tui) HandleConnectDisconnect() {
 	}
 }
 
-func (t *tui) HandleExit() {
+func (t *tui) handleExit() {
 	t.app.Stop()
 }
 
-func (t *tui) OutputError(err error) {
+func (t *tui) outputError(err error) {
 	t.outputView.SetText(fmt.Sprintf("[red:]%s[-:-:-]", err.Error()))
 }
 
-func (t *tui) OutputInfo(info string) {
+func (t *tui) outputInfo(info string) {
 	t.outputView.SetText(info)
 }
