@@ -492,7 +492,11 @@ func (t *tui) HandlePause() {
 }
 
 func (t *tui) HandleConnectDisconnect() {
-	// TODO: Implement disconnect - it doesn't clear the main list properly, and needs a way of reconnecting afterwards
+	if t.pages.HasPage("connect") {
+		t.pages.RemovePage("connect")
+		return
+	}
+
 	if t.server.isConnected() {
 		if err := t.server.Disconnect(); err != nil {
 			t.OutputError(err)
@@ -500,6 +504,7 @@ func (t *tui) HandleConnectDisconnect() {
 			t.OutputInfo("Disconnected from beanstalk server. Press F9 to connect.")
 			t.updater.Stop()
 			t.mainList.Clear()
+			t.mainList.AddItem("Not connected to a beanstalk server. Press F9 to connect.", "", 0, nil)
 			t.peekView.Clear()
 			t.tubes = make([]string, 0)
 			t.SetupKeysView()
@@ -537,8 +542,11 @@ func (t *tui) HandleConnectDisconnect() {
 						return
 					}
 
+					address := fmt.Sprintf("%s:%d", host, port)
+					t.mainList.Clear()
+					t.mainList.AddItem("Waiting for data from " + address + "...", "", 0, nil)
+
 					t.app.QueueUpdateDraw(func() {
-						address := fmt.Sprintf("%s:%d", host, port)
 						t.OutputInfo("Connected to " + address)
 						t.updater.Reset(1 * time.Second)
 						t.SetupKeysView()
