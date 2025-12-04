@@ -148,7 +148,7 @@ func (t *tui) setupKeysView() {
 }
 
 func (t *tui) buildListRow(tube string, stats map[string]string) string {
-	var rowParts []string
+	var rowBuilder strings.Builder
 
 	// Add tube name cell
 	namePadding := strings.Repeat(" ", t.maxTubeNameLength-len(tube))
@@ -159,7 +159,7 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
 		tubeNameColour = "lightblue"
 	}
-	rowParts = append(rowParts, fmt.Sprintf("[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding))
+	fmt.Fprintf(&rowBuilder, "[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding)
 
 	// Add state cells
 	for _, state := range []string{"ready", "delayed", "buried"} {
@@ -169,17 +169,17 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 			colourName := getStateColourName(state)
 			// Right-align the value with padding
 			paddedValue := fmt.Sprintf("%*s ", width, value)
-			rowParts = append(rowParts, fmt.Sprintf("[white:%s]%s[-:-:-]", colourName, paddedValue))
+			fmt.Fprintf(&rowBuilder, "[white:%s]%s[-:-:-]", colourName, paddedValue)
 		}
 	}
 
-	rowParts = append(rowParts, " ")
+	rowBuilder.WriteString(" ")
 
 	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
-		rowParts = append(rowParts, fmt.Sprintf("[lightblue:]* PAUSED: %s *[-:-:-]", secondsToHumanReadable(stats["pause-time-left"])))
+		fmt.Fprintf(&rowBuilder, "[lightblue:]* PAUSED: %s *[-:-:-]", secondsToHumanReadable(stats["pause-time-left"]))
 	}
 
-	return strings.Join(rowParts, "") // TODO replace with strings.Builder
+	return rowBuilder.String()
 }
 
 func tubeCurrentlyActive(stats map[string]string) bool {
