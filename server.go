@@ -109,6 +109,10 @@ func (s *server) DeleteAll(state, name string) (int, error) {
 			id, _, err = tube.PeekDelayed()
 		}
 		if err != nil {
+			if errors.Is(err, beanstalk.ErrNotFound) {
+				// Treat the tube being empty as success
+				return n, nil
+			}
 			return n, err
 		}
 
