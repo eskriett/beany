@@ -89,11 +89,11 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF2:
 			t.handleSetup()
 		case tcell.KeyF3:
-			t.handleDeleteBuried()
+			t.handleDeleteAll("buried")
 		case tcell.KeyF4:
-			t.handleDeleteDelayed()
+			t.handleDeleteAll("delayed")
 		case tcell.KeyF5:
-			t.handleDeleteReady()
+			t.handleDeleteAll("ready")
 		case tcell.KeyF6:
 			t.handleKickJobs()
 		case tcell.KeyF7:
@@ -379,21 +379,6 @@ func (t *tui) handleHelp() {
 
 func (t *tui) handleSetup() {
 	// TODO: Implement setup
-}
-
-func (t *tui) handleDeleteBuried() {
-	// TODO: Implement delete buried
-	t.handleDeleteAll("buried")
-}
-
-func (t *tui) handleDeleteDelayed() {
-	// TODO: Implement delete delayed
-	t.handleDeleteAll("delayed")
-}
-
-func (t *tui) handleDeleteReady() {
-	// TODO: Implement delete ready
-	t.handleDeleteAll("ready") // TODO this works but shows an error "peek-ready: not found"
 }
 
 func (t *tui) handleDeleteAll(state string) {
