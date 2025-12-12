@@ -15,7 +15,7 @@ const Version = "0.0.1"
 func main() {
 	flagNoColor := flag.Bool("boring", false, "Disable color output")
 	flagConnect := flag.String("connect", "127.0.0.1:11300", "Server to connect to")
-	flagTui     := flag.Bool("tui", false, "Enable TUI")
+	flagTui := flag.Bool("tui", false, "Enable TUI")
 	flag.Parse()
 
 	if *flagNoColor || len(os.Args) > 1 {

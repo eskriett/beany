@@ -90,7 +90,7 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF2:
 			t.handlePut()
 		case tcell.KeyF3:
-			t.handleDeleteAll("buried")
+			t.handleDeleteAll("buried") // TODO add a way to delete a single job - maybe combine the delete alls into a modal which asks delete current job, all buried jobs, all delayed jobs, or all ready jobs
 		case tcell.KeyF4:
 			t.handleDeleteAll("delayed")
 		case tcell.KeyF5:
@@ -102,7 +102,7 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF8:
 			t.handlePause()
 		case tcell.KeyF9:
-			t.handleConnectDisconnect()
+			t.handleConnectDisconnect() // TODO pressing this during connecting triggers a segfault
 		case tcell.KeyF10:
 			t.handleExit()
 		case tcell.KeyRune:
@@ -163,13 +163,13 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 	fmt.Fprintf(&rowBuilder, "[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding)
 
 	// Add state cells
-	for _, state := range []string{"ready", "delayed", "buried"} {
+	cellWidths := t.getCellWidths(stats)
+	for i, state := range []string{"ready", "delayed", "buried"} {
 		value := stats[fmt.Sprintf("current-jobs-%s", state)]
-		width := getCellWidth(value)
-		if width > 0 {
+		if cellWidths[i] > 0 {
 			colourName := getStateColourName(state)
 			// Right-align the value with padding
-			paddedValue := fmt.Sprintf("%*s ", width, value)
+			paddedValue := fmt.Sprintf("%*s ", cellWidths[i], value)
 			fmt.Fprintf(&rowBuilder, "[white:%s]%s[-:-:-]", colourName, paddedValue)
 		}
 	}
@@ -206,13 +206,53 @@ func getStateColourName(state string) string {
 	}
 }
 
-func getCellWidth(contents string) int {
-	val, _ := strconv.Atoi(contents)
-	if val == 0 {
-		return 0
+func (t *tui) getCellWidths(stats map[string]string) []int {
+	readyJobs, _ := strconv.Atoi(stats["current-jobs-ready"])
+	delayedJobs, _ := strconv.Atoi(stats["current-jobs-delayed"])
+	buriedJobs, _ := strconv.Atoi(stats["current-jobs-buried"])
+
+	totalJobs := readyJobs + delayedJobs + buriedJobs
+
+	if totalJobs == 0 {
+		return []int{0, 0, 0}
 	}
-	log := math.Log2(float64(val))
-	return int(math.Max(float64(len(contents)), log)) + 1
+
+	_, _, panelWidth, _ := t.peekView.GetRect()
+	panelWidth = panelWidth - t.maxTubeNameLength // this is the space available for the bars
+	if panelWidth < 1 {
+		panelWidth = 1
+	}
+
+	// Scale width by using a logarithm whose base is chosen so that
+	// log_base(1_000_000_000) == panelWidth.
+	base := math.Exp(math.Log(1_000_000_000) / float64(panelWidth))
+	// if base <= 1 {
+	// 	base = 2 // fallback to prevent divide-by-zero/negative log bases
+	// }
+	logWidth := math.Log(float64(totalJobs)) / math.Log(base)
+	totalWidth := int(math.Ceil(logWidth))
+	if totalWidth < 1 {
+		totalWidth = 1
+	}
+	if totalWidth > panelWidth {
+		totalWidth = panelWidth
+	}
+
+	readyWidth := 0
+	delayedWidth := 0
+	buriedWidth := 0
+
+	if readyJobs > 0 {
+		readyWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(readyJobs)/float64(totalJobs)), 2)) // TODO minimum width should be based on the length of the string it contains
+	}
+	if delayedJobs > 0 {
+		delayedWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(delayedJobs)/float64(totalJobs)), 2))
+	}
+	if buriedJobs > 0 {
+		buriedWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(buriedJobs)/float64(totalJobs)), 2))
+	}
+
+	return []int{readyWidth, delayedWidth, buriedWidth}
 }
 
 func (t *tui) Run() {
@@ -379,11 +419,6 @@ func (t *tui) handleHelp() {
 }
 
 func (t *tui) handlePut() {
-	if !t.server.isConnected() {
-		t.outputError(errors.New("not connected to a beanstalk server"))
-		return
-	}
-
 	currentTube, err := t.getCurrentTube()
 	if err != nil {
 		t.outputError(err)
@@ -396,8 +431,8 @@ func (t *tui) handlePut() {
 	}
 
 	form := tview.NewForm()
-	priorityField := tview.NewInputField().SetLabel("Priority").SetText("1").SetFieldWidth(10)
-	delayField := tview.NewInputField().SetLabel("Delay (seconds)").SetText("0").SetFieldWidth(10)
+	priorityField := tview.NewInputField().SetLabel("Priority").SetFieldWidth(10).SetText("1").SetAcceptanceFunc(tview.InputFieldInteger)
+	delayField := tview.NewInputField().SetLabel("Delay (seconds)").SetFieldWidth(10).SetText("0").SetAcceptanceFunc(tview.InputFieldInteger)
 	bodyArea := tview.NewTextArea().SetLabel("Body")
 
 	form.AddFormItem(priorityField).
@@ -645,7 +680,7 @@ func (t *tui) handleConnectDisconnect() {
 
 					address := fmt.Sprintf("%s:%d", host, port)
 					t.mainList.Clear()
-					t.mainList.AddItem("Waiting for data from " + address + "...", "", 0, nil)
+					t.mainList.AddItem("Waiting for data from "+address+"...", "", 0, nil)
 
 					t.app.QueueUpdateDraw(func() {
 						t.outputInfo("Connected to " + address)
