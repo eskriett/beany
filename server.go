@@ -218,12 +218,12 @@ func (s *server) PeekJob(id uint64) ([]byte, error) {
 	}
 }
 
-func (s *server) Put(body []byte, name string) (uint64, error) {
+func (s *server) Put(body []byte, name string, priority uint32, delay time.Duration) (uint64, error) {
 	tube := beanstalk.Tube{
 		Conn: s.bs,
 		Name: name,
 	}
-	return tube.Put(body, 1, 0, 180*time.Second)
+	return tube.Put(body, priority, delay, 180*time.Second)
 }
 
 func (s *server) Stats() (map[string]string, error) {

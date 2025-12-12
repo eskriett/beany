@@ -382,7 +382,7 @@ func (c *cli) addPutCmd() {
 				return
 			}
 
-			if id, err := c.server.Put(job, tube); err != nil {
+			if id, err := c.server.Put(job, tube, 1, 0); err != nil {
 				outputError(err, i)
 			} else {
 				outputInfo(fmt.Sprintf("Put job (#%d) onto %s", id, tube), i)

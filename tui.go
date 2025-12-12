@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -87,7 +88,7 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF1:
 			t.handleHelp()
 		case tcell.KeyF2:
-			t.handleSetup()
+			t.handlePut()
 		case tcell.KeyF3:
 			t.handleDeleteAll("buried")
 		case tcell.KeyF4:
@@ -127,7 +128,7 @@ func (t *tui) setupKeysView() {
 	}
 	funcKeyMap := map[int]string{
 		1:  "Help",
-		2:  "Setup",
+		2:  "Put",
 		3:  "DeleteBuried",
 		4:  "DeleteDelayed",
 		5:  "DeleteReady",
@@ -377,8 +378,88 @@ func (t *tui) handleHelp() {
 	t.pages.AddPage("help", modal, true, true)
 }
 
-func (t *tui) handleSetup() {
-	// TODO: Implement setup
+func (t *tui) handlePut() {
+	if !t.server.isConnected() {
+		t.outputError(errors.New("not connected to a beanstalk server"))
+		return
+	}
+
+	currentTube, err := t.getCurrentTube()
+	if err != nil {
+		t.outputError(err)
+		return
+	}
+
+	if t.pages.HasPage("put") {
+		t.pages.RemovePage("put")
+		return
+	}
+
+	form := tview.NewForm()
+	priorityField := tview.NewInputField().SetLabel("Priority").SetText("1").SetFieldWidth(10)
+	delayField := tview.NewInputField().SetLabel("Delay (seconds)").SetText("0").SetFieldWidth(10)
+	bodyArea := tview.NewTextArea().SetLabel("Body")
+
+	form.AddFormItem(priorityField).
+		AddFormItem(delayField).
+		AddFormItem(bodyArea)
+
+	form.AddButton("Submit", func() {
+		priorityStr := priorityField.GetText()
+		if priorityStr == "" {
+			priorityStr = "1"
+		}
+		priority, err := strconv.ParseUint(priorityStr, 10, 32)
+		if err != nil {
+			t.outputError(fmt.Errorf("priority must be a number"))
+			t.pages.RemovePage("put")
+			return
+		}
+
+		delayStr := delayField.GetText()
+		if delayStr == "" {
+			delayStr = "0"
+		}
+		delaySeconds, err := strconv.ParseUint(delayStr, 10, 64)
+		if err != nil {
+			t.outputError(fmt.Errorf("delay must be a number"))
+			t.pages.RemovePage("put")
+			return
+		}
+
+		bodyText := bodyArea.GetText()
+		bodyBytes := []byte(bodyText)
+		if len(bodyBytes) == 0 {
+			t.outputError(errors.New("body cannot be empty"))
+			t.pages.RemovePage("put")
+			return
+		}
+
+		t.pages.RemovePage("put")
+		t.outputInfo("Submitting job...")
+
+		go func() {
+			id, err := t.server.Put(bodyBytes, currentTube, uint32(priority), time.Duration(delaySeconds)*time.Second)
+			if err != nil {
+				t.app.QueueUpdateDraw(func() {
+					t.outputError(fmt.Errorf("failed to put job: %w", err))
+				})
+				return
+			}
+
+			t.app.QueueUpdateDraw(func() {
+				t.outputInfo(fmt.Sprintf("Job %d added to tube %s", id, currentTube))
+			})
+		}()
+	}).AddButton("Cancel", func() {
+		t.pages.RemovePage("put")
+	})
+
+	form.SetBorder(true).
+		SetTitle(fmt.Sprintf("Put job on %s", currentTube)).
+		SetTitleAlign(tview.AlignLeft)
+
+	t.pages.AddPage("put", form, true, true)
 }
 
 func (t *tui) handleDeleteAll(state string) {
