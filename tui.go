@@ -220,39 +220,33 @@ func (t *tui) getCellWidths(stats map[string]string) []int {
 	_, _, panelWidth, _ := t.peekView.GetRect()
 	panelWidth = panelWidth - t.maxTubeNameLength // this is the space available for the bars
 	if panelWidth < 1 {
-		panelWidth = 1
+		return []int{0, 0, 0}
 	}
 
 	// Scale width by using a logarithm whose base is chosen so that
 	// log_base(1_000_000_000) == panelWidth.
 	base := math.Exp(math.Log(1_000_000_000) / float64(panelWidth))
-	// if base <= 1 {
-	// 	base = 2 // fallback to prevent divide-by-zero/negative log bases
-	// }
 	logWidth := math.Log(float64(totalJobs)) / math.Log(base)
 	totalWidth := int(math.Ceil(logWidth))
 	if totalWidth < 1 {
-		totalWidth = 1
+		return []int{0, 0, 0}
 	}
 	if totalWidth > panelWidth {
 		totalWidth = panelWidth
 	}
 
-	readyWidth := 0
-	delayedWidth := 0
-	buriedWidth := 0
-
-	if readyJobs > 0 {
-		readyWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(readyJobs)/float64(totalJobs)), 2)) // TODO minimum width should be based on the length of the string it contains
-	}
-	if delayedJobs > 0 {
-		delayedWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(delayedJobs)/float64(totalJobs)), 2))
-	}
-	if buriedJobs > 0 {
-		buriedWidth = int(math.Max(math.Ceil(float64(totalWidth)*float64(buriedJobs)/float64(totalJobs)), 2))
-	}
+	readyWidth := getCellWidth(totalWidth, totalJobs, readyJobs, stats["current-jobs-ready"])
+	delayedWidth := getCellWidth(totalWidth, totalJobs, delayedJobs, stats["current-jobs-delayed"])
+	buriedWidth := getCellWidth(totalWidth, totalJobs, buriedJobs, stats["current-jobs-buried"])
 
 	return []int{readyWidth, delayedWidth, buriedWidth}
+}
+
+func getCellWidth(totalWidth int, totalJobs int, jobs int, jobString string) int {
+	if jobs == 0 {
+		return 0
+	}
+	return int(math.Max(math.Ceil(float64(totalWidth)*float64(jobs)/float64(totalJobs)), float64(len(jobString) + 1)))
 }
 
 func (t *tui) Run() {
