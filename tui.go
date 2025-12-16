@@ -60,12 +60,12 @@ func NewTui(server *server) *tui {
 	keysView := tview.NewTextView().
 		SetDynamicColors(true)
 	t.keysView = keysView
-	t.setupKeysView()
+	t.setupFooter()
 
 	versionView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignRight).
-		SetText("[::b]beany[-:-:-] --tui " + Version + " ") // TODO t.server.ConnectionStr() might be useful, would need to make the whole footer updateable
+		SetText("[::b]beany[-:-:-] --tui " + Version + " ")
 
 	footer := tview.NewFlex().
 		AddItem(keysView, tview.TaggedStringWidth(t.keysView.GetText(true)), 0, false).
@@ -100,9 +100,9 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF7:
 			t.handleKickAllTubes()
 		case tcell.KeyF8:
-			t.handlePause()
+			t.handlePause() // TODO rename to handlePauseTube to allow pausing screen - once deletes are consolidated, add a pause screen button to allow copying
 		case tcell.KeyF9:
-			t.handleConnectDisconnect() // TODO pressing this during connecting triggers a segfault
+			t.handleConnectDisconnect()
 		case tcell.KeyF10:
 			t.handleExit()
 		case tcell.KeyRune:
@@ -121,7 +121,7 @@ func NewTui(server *server) *tui {
 	return t
 }
 
-func (t *tui) setupKeysView() {
+func (t *tui) setupFooter() {
 	connectString := "Connect"
 	if t.server.isConnected() {
 		connectString = "Disconnect"
@@ -637,7 +637,7 @@ func (t *tui) handleConnectDisconnect() {
 			t.mainList.AddItem("Not connected to a beanstalk server. Press F9 to connect.", "", 0, nil)
 			t.peekView.Clear()
 			t.tubes = make([]string, 0)
-			t.setupKeysView()
+			t.setupFooter()
 		}
 	} else {
 		form := tview.NewForm()
@@ -679,7 +679,7 @@ func (t *tui) handleConnectDisconnect() {
 					t.app.QueueUpdateDraw(func() {
 						t.outputInfo("Connected to " + address)
 						t.updater.Reset(1 * time.Second)
-						t.setupKeysView()
+						t.setupFooter()
 					})
 				}()
 			}).
