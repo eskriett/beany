@@ -411,8 +411,8 @@ func (t *tui) handleHelp() {
 		return
 	}
 
-	modal := tview.NewModal().
-		SetText("Placeholder help"). // TODO
+	modal := tview.NewModal(). // TODO replace with a fullscreen form and align text left
+		SetText(helpTUI).
 		AddButtons([]string{"Close"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 			t.pages.RemovePage("help")

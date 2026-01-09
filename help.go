@@ -87,4 +87,14 @@ This command is available via the 'st' alias`
 This command is available via the 'ut' alias`
 
 	helpVersion = `Displays beany version information`
+
+	helpTUI = `In TUI mode, the screen is divided into three panes:
+
+	- The left pane shows the tubes, with histograms of the number of ready, delayed and buried jobs in each tube. The list can be navigated with the arrow keys.
+	- The right pane shows the first job in each state on the currently selected tube. It also shows the most recent info or error message.
+	- The footer shows the available commands.
+
+	The available commands are:
+
+	- Help: Shows this help message` // TODO add help for other commands
 )
