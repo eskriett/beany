@@ -25,6 +25,7 @@ type tui struct {
 	pages             *tview.Pages
 	updater           *time.Ticker
 	keysView          *tview.TextView
+	screenPaused      bool
 }
 
 func NewTui(server *server) *tui {
@@ -34,6 +35,7 @@ func NewTui(server *server) *tui {
 		maxTubeNameLength: 0,
 		tubes:             make([]string, 0),
 		app:               app,
+		screenPaused:      false,
 	}
 
 	list := tview.NewList()
@@ -126,6 +128,10 @@ func (t *tui) setupFooter() {
 	if t.server.isConnected() {
 		connectString = "Disconnect"
 	}
+	pauseString := "PauseScreen"
+	if t.screenPaused {
+		pauseString = "UnpauseScreen"
+	}
 	funcKeyMap := map[int]string{
 		1:  "Help",
 		2:  "Put",
@@ -134,7 +140,7 @@ func (t *tui) setupFooter() {
 		5:  "KickJobs",
 		6:  "KickAllTubes",
 		7:  "PauseTube",
-		8:  "PauseScreen",
+		8:  pauseString,
 		9:  connectString,
 		10: "Exit",
 	}
@@ -257,7 +263,9 @@ func (t *tui) Run() {
 		defer t.updater.Stop()
 
 		for range t.updater.C {
-			t.update()
+			if !t.screenPaused {
+				t.update()
+			}
 		}
 	}()
 
@@ -492,11 +500,11 @@ func (t *tui) handlePut() {
 }
 
 func (t *tui) handleDeleteJob() {
-	currentTube, err := t.getCurrentTube()
-	if err != nil {
-		t.outputError(err)
-		return
-	}
+	// currentTube, err := t.getCurrentTube()
+	// if err != nil {
+	// 	t.outputError(err)
+	// 	return
+	// }
 
 	// TODO add a form to delete a single job by its ID
 }
@@ -657,7 +665,14 @@ func (t *tui) handlePauseTube() {
 }
 
 func (t *tui) handlePauseScreen() {
-	// TODO add a property to t which controls whether the screen is paused or not, print a message when the property is changed
+	t.screenPaused = !t.screenPaused
+	if t.screenPaused {
+		t.outputInfo("Screen paused - screen updates are disabled to ease copying data")
+	} else {
+		t.outputInfo("Screen unpaused - screen updates are resumed")
+	}
+
+	t.setupFooter()
 }
 
 func (t *tui) handleConnectDisconnect() {
