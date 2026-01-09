@@ -500,13 +500,43 @@ func (t *tui) handlePut() {
 }
 
 func (t *tui) handleDeleteJob() {
-	// currentTube, err := t.getCurrentTube()
-	// if err != nil {
-	// 	t.outputError(err)
-	// 	return
-	// }
+	if t.pages.HasPage("delete-job") {
+		t.pages.RemovePage("delete-job")
+		return
+	}
 
-	// TODO add a form to delete a single job by its ID
+	form := tview.NewForm()
+	idField := tview.NewInputField().SetLabel("Job ID").SetFieldWidth(20).SetAcceptanceFunc(tview.InputFieldInteger)
+
+	form.AddFormItem(idField).
+		AddButton("Delete", func() {
+			idStr := idField.GetText()
+			id, err := strconv.ParseUint(idStr, 10, 64)
+			if err != nil {
+				t.outputError(fmt.Errorf("job ID must be a number"))
+				t.pages.RemovePage("delete-job")
+				return
+			}
+			t.pages.RemovePage("delete-job")
+			t.outputInfo(fmt.Sprintf("Deleting job %d", id))
+			go func() {
+				err := t.server.Delete(id)
+				if err != nil {
+					t.outputError(err)
+				} else {
+					t.outputInfo(fmt.Sprintf("Job %d deleted", id))
+				}
+			}()
+		})
+	form.AddButton("Cancel", func() {
+		t.pages.RemovePage("delete-job")
+	})
+
+	form.SetBorder(true).
+		SetTitle("Delete job").
+		SetTitleAlign(tview.AlignLeft)
+
+	t.pages.AddPage("delete-job", form, true, true)
 }
 
 func (t *tui) handleDeleteAll() {
