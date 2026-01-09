@@ -90,17 +90,17 @@ func NewTui(server *server) *tui {
 		case tcell.KeyF2:
 			t.handlePut()
 		case tcell.KeyF3:
-			t.handleDeleteAll("buried") // TODO add a way to delete a single job - maybe combine the delete alls into a modal which asks delete current job, all buried jobs, all delayed jobs, or all ready jobs
+			t.handleDeleteJob()
 		case tcell.KeyF4:
-			t.handleDeleteAll("delayed")
+			t.handleDeleteAll()
 		case tcell.KeyF5:
-			t.handleDeleteAll("ready")
-		case tcell.KeyF6:
 			t.handleKickJobs()
-		case tcell.KeyF7:
+		case tcell.KeyF6:
 			t.handleKickAllTubes()
+		case tcell.KeyF7:
+			t.handlePauseTube()
 		case tcell.KeyF8:
-			t.handlePause() // TODO rename to handlePauseTube to allow pausing screen - once deletes are consolidated, add a pause screen button to allow copying
+			t.handlePauseScreen()
 		case tcell.KeyF9:
 			t.handleConnectDisconnect()
 		case tcell.KeyF10:
@@ -129,12 +129,12 @@ func (t *tui) setupFooter() {
 	funcKeyMap := map[int]string{
 		1:  "Help",
 		2:  "Put",
-		3:  "DeleteBuried",
-		4:  "DeleteDelayed",
-		5:  "DeleteReady",
-		6:  "KickJobs",
-		7:  "KickAllTubes",
-		8:  "Pause",
+		3:  "DeleteJob",
+		4:  "DeleteAllJobs",
+		5:  "KickJobs",
+		6:  "KickAllTubes",
+		7:  "PauseTube",
+		8:  "PauseScreen",
 		9:  connectString,
 		10: "Exit",
 	}
@@ -491,36 +491,71 @@ func (t *tui) handlePut() {
 	t.pages.AddPage("put", form, true, true)
 }
 
-func (t *tui) handleDeleteAll(state string) {
+func (t *tui) handleDeleteJob() {
 	currentTube, err := t.getCurrentTube()
 	if err != nil {
 		t.outputError(err)
 		return
 	}
 
-	stats, err := t.server.StatsTube(currentTube)
-	if err != nil {
-		t.outputError(err)
-		return
-	}
-	expectedCount, err := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", state)])
-	if err != nil {
-		t.outputError(err)
-		return
-	}
+	// TODO add a form to delete a single job by its ID
+}
 
-	if expectedCount == 0 {
-		t.outputInfo(fmt.Sprintf("No %s jobs to delete", state))
-		return
-	}
-
-	actualCount, err := t.server.DeleteAll(state, currentTube)
+func (t *tui) handleDeleteAll() {
+	currentTube, err := t.getCurrentTube()
 	if err != nil {
 		t.outputError(err)
 		return
 	}
 
-	t.outputInfo(fmt.Sprintf("Deleted %d %s jobs", actualCount, state))
+	if t.pages.HasPage("delete-all") {
+		t.pages.RemovePage("delete-all")
+		return
+	}
+
+	modal := tview.NewModal().
+		SetText(fmt.Sprintf("Delete all jobs in a given state from the %s tube", currentTube)).
+		AddButtons([]string{"Cancel", "Delete all ready jobs", "Delete all delayed jobs", "Delete all buried jobs"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			stateToDelete := ""
+			if buttonIndex == 1 {
+				stateToDelete = "ready"
+			} else if buttonIndex == 2 {
+				stateToDelete = "delayed"
+			} else if buttonIndex == 3 {
+				stateToDelete = "buried"
+			}
+			t.pages.RemovePage("delete-all")
+
+			if stateToDelete == "" {
+				return
+			}
+
+			stats, err := t.server.StatsTube(currentTube)
+			if err != nil {
+				t.outputError(err)
+				return
+			}
+			expectedCount, err := strconv.Atoi(stats[fmt.Sprintf("current-jobs-%s", stateToDelete)])
+			if err != nil {
+				t.outputError(err)
+				return
+			}
+
+			if expectedCount == 0 {
+				t.outputInfo(fmt.Sprintf("No %s jobs to delete", stateToDelete))
+				return
+			}
+
+			actualCount, err := t.server.DeleteAll(stateToDelete, currentTube)
+			if err != nil {
+				t.outputError(err)
+				return
+			}
+
+			t.outputInfo(fmt.Sprintf("Deleted %d %s jobs", actualCount, stateToDelete))
+		})
+	t.pages.AddPage("delete-all", modal, true, true)
 }
 
 func (t *tui) handleKickJobs() {
@@ -587,7 +622,7 @@ func (t *tui) handleKickAllTubes() {
 	t.outputInfo(fmt.Sprintf("Kicked %d jobs on %d tubes", totalKickedJobs, kickedTubes))
 }
 
-func (t *tui) handlePause() {
+func (t *tui) handlePauseTube() {
 	currentTube, err := t.getCurrentTube()
 	if err != nil {
 		t.outputError(err)
@@ -619,6 +654,10 @@ func (t *tui) handlePause() {
 			t.pages.RemovePage("pause")
 		})
 	t.pages.AddPage("pause", modal, true, true)
+}
+
+func (t *tui) handlePauseScreen() {
+	// TODO add a property to t which controls whether the screen is paused or not, print a message when the property is changed
 }
 
 func (t *tui) handleConnectDisconnect() {
