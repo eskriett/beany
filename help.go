@@ -96,7 +96,7 @@ This command is available via the 'ut' alias`
 
 The available commands are:
 
-	- Help: Show this help message.
+	- Help: Show this help message. This can also be opened using ?.
 	- Put: Open a form allowing a new job to be put onto the selected tube, with configurable priority (lower is sooner), delay (in seconds, for which the job will remain in the delayed state before becoming ready), and body.
 	- DeleteJob: Open a form allowing a single job to be deleted from any tube, by specifying its ID.
 	- DeleteAllJobs: Open a modal allowing all ready, delayed or buried jobs to be deleted from the current tube.
@@ -107,7 +107,9 @@ The available commands are:
 		- UnpauseScreen: When paused, the screen can be unpaused with the same hotkey.
 	- Disconnect: Disconnect from the currently connected beanstalk server.
 		- Connect: When disconnected, the same hotkey opens a modal allowing a beanstalk server to be connected to by specifying its hostname and port. By default, beany will attempt to connect to localhost:11300.
-	- Exit: Exit the application.
+	- Exit: Exit the application Pressing q also exits.
+
+Each modal and form can be closed by pressing the hotkey which opened it. All overlays can be closed by pressing Escape.
 
 More commands are available when running beany in CLI mode.`
 )

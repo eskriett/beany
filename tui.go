@@ -87,6 +87,9 @@ func NewTui(server *server) *tui {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyEsc:
+			t.closeOverlays()
+			return nil
 		case tcell.KeyF1:
 			t.handleHelp()
 		case tcell.KeyF2:
@@ -402,6 +405,14 @@ func (t *tui) getCurrentTube() (string, error) {
 		return "", errors.New("no tube selected")
 	}
 	return t.tubes[currentSelection], nil
+}
+
+func (t *tui) closeOverlays() {
+	for _, pageName := range []string{"help", "put", "delete-job", "delete-all", "pause", "connect"} {
+		if t.pages.HasPage(pageName) {
+			t.pages.RemovePage(pageName)
+		}
+	}
 }
 
 func (t *tui) handleHelp() {
