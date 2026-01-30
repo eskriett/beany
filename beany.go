@@ -10,7 +10,7 @@ import (
 	"github.com/fatih/color"
 )
 
-const Version = "0.0.1"
+const Version = "0.1.0"
 
 func main() {
 	flagNoColor := flag.Bool("boring", false, "Disable color output")

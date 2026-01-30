@@ -1,6 +1,6 @@
 # beany
 
-Beany is an interactive command-line client for
+Beany is an interactive command-line and TUI client for
 [beanstalkd](https://github.com/kr/beanstalkd) written in
 [Go](https://golang.org/)
 
@@ -8,10 +8,20 @@ Beany is an interactive command-line client for
 
 ## Features
 
+### CLI mode
+
 * Persistent history
 * Mass deletion of jobs on selected tube
 * Paged output when viewing jobs
 * Tube autocompletion for commands
+
+### TUI mode
+
+* Histogram view showing live counts in all tubes
+* Automatically peek the current tube
+* Quickly run commands on the current tube, or across all tubes
+
+TODO add a TUI screenshot without any private info in
 
 ## Installation
 
@@ -25,8 +35,8 @@ go get github.com/eskriett/beany
 beany [options]
 ```
 
-Running `beany` without any arguments will start it in interactive mode. By
-default it will attempt to connect to `127.0.0.1:11300`:
+Running `beany` without any arguments will start it in interactive command-line
+mode. By default it will attempt to connect to `127.0.0.1:11300`:
 
 ```
 $ beany
@@ -84,13 +94,29 @@ A tube argument can also be provided, otherwise uses the current active tube:
 This command is available via the 'pr' alias
 ```
 
+To run beany in TUI mode, pass the `--tui` argument. By default it will attempt
+to connect to `127.0.0.1:11300`:
+
+```
+$ beany --tui
+```
+
+This can be modified by passing the `--connect` argument:
+
+```
+$ beany --tui --connect localhost:11301
+```
+
+If a subcommand is passed, the `--tui` flag has no effect.
+
 ### History
 
 `beany` maintains a persistent history, this can be found at `~/.beany_history`.
 
 ### Colours
 
-Coloured output can be disabled with `beany --boring`
+Coloured output can be disabled with `beany --boring`. This has no effect in
+TUI mode.
 
 ### Pager
 

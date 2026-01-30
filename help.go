@@ -101,7 +101,7 @@ The available commands are:
 	- DeleteJob: Open a form allowing a single job to be deleted from any tube, by specifying its ID.
 	- DeleteAllJobs: Open a modal allowing all ready, delayed or buried jobs to be deleted from the current tube.
 	- KickJobs: Immediately kick all buried jobs on the current tube back to ready. If there are no buried jobs, kick all delayed jobs back to ready.
-	- KickAllTubes: Immediately kick all buried jobs on all tubes back to ready. Delayed jobs are not affected, and must be kicked tube by tube.
+	- KickAllTubes: Immediately kick all buried jobs on all tubes back to ready. Delayed jobs are not affected, and must be kicked using KickJobs.
 	- PauseTube: Open a modal where the current tube can be paused for one hour, or unpaused. Jobs in a paused tube can't be reserved, and delayed jobs' delay timers do not decrement. An already-paused tube can be paused again, which extends the remaining pause period to one hour.
 	- PauseScreen: Pause the screen, so no more updates are shown. Pausing the screen allows data to be copied to the clipboard.
 		- UnpauseScreen: When paused, the screen can be unpaused with the same hotkey.
