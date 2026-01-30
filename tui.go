@@ -234,9 +234,7 @@ func (t *tui) getCellWidths(stats map[string]string) []int {
 	base := math.Exp(math.Log(1_000_000_000) / float64(panelWidth))
 	logWidth := math.Log(float64(totalJobs)) / math.Log(base)
 	totalWidth := int(math.Ceil(logWidth))
-	if totalWidth < 1 {
-		return []int{0, 0, 0}
-	}
+
 	if totalWidth > panelWidth {
 		totalWidth = panelWidth
 	}
@@ -252,6 +250,7 @@ func getCellWidth(totalWidth int, totalJobs int, jobs int, jobString string) int
 	if jobs == 0 {
 		return 0
 	}
+
 	return int(math.Max(math.Ceil(float64(totalWidth)*float64(jobs)/float64(totalJobs)), float64(len(jobString) + 1)))
 }
 
@@ -411,13 +410,31 @@ func (t *tui) handleHelp() {
 		return
 	}
 
-	modal := tview.NewModal(). // TODO replace with a fullscreen form and align text left
-		SetText(helpTUI).
-		AddButtons([]string{"Close"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+	helpText := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true).
+		SetWrap(true).
+		SetText(helpTUI)
+
+	closeButton := tview.NewButton("Back").
+		SetSelectedFunc(func() {
 			t.pages.RemovePage("help")
 		})
-	t.pages.AddPage("help", modal, true, true)
+	closeRow := tview.NewFlex().
+		AddItem(tview.NewBox(), 1, 0, false).
+		AddItem(closeButton, tview.TaggedStringWidth("Back")+4, 0, true).
+		AddItem(tview.NewBox(), 0, 1, false)
+
+	helpFlex := tview.NewFlex()
+	helpFlex.SetDirection(tview.FlexRow).
+		SetBorder(true).
+		SetTitle("Help").
+		SetTitleAlign(tview.AlignLeft)
+
+	helpFlex.AddItem(helpText, 0, 1, false).
+		AddItem(closeRow, 1, 0, true)
+
+	t.pages.AddPage("help", helpFlex, true, true)
 }
 
 func (t *tui) handlePut() {
