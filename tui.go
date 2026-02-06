@@ -25,6 +25,7 @@ type tui struct {
 	pages             *tview.Pages
 	updater           *time.Ticker
 	keysView          *tview.TextView
+	footer            *tview.Flex
 	screenPaused      bool
 }
 
@@ -62,7 +63,6 @@ func NewTui(server *server) *tui {
 	keysView := tview.NewTextView().
 		SetDynamicColors(true)
 	t.keysView = keysView
-	t.setupFooter()
 
 	versionView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -70,8 +70,11 @@ func NewTui(server *server) *tui {
 		SetText("[::b]beany[-:-:-] --tui " + Version + " ")
 
 	footer := tview.NewFlex().
-		AddItem(keysView, tview.TaggedStringWidth(t.keysView.GetText(true)), 0, false).
+		AddItem(keysView, 1, 0, false).
 		AddItem(versionView, 0, 1, false)
+	t.footer = footer
+
+	t.setupFooter()
 
 	grid := tview.NewGrid().
 		SetColumns(0, 0).
@@ -148,13 +151,16 @@ func (t *tui) setupFooter() {
 		10: "Exit",
 	}
 
-	var footerParts []string
+	var footerBuilder strings.Builder
 	for i := 1; i <= 10; i++ {
-		footerParts = append(footerParts, fmt.Sprintf("[white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i]))
+		fmt.Fprintf(&footerBuilder, " [white:darkgreen]F%d[-:-] %s", i, funcKeyMap[i])
 	}
 
-	footerKeysText := " " + strings.Join(footerParts, " ")
-	t.keysView.SetText(footerKeysText)
+	t.keysView.SetText(footerBuilder.String())
+	keysWidth := tview.TaggedStringWidth(t.keysView.GetText(true)) + 1
+	if t.footer != nil {
+		t.footer.ResizeItem(t.keysView, keysWidth, 0)
+	}
 }
 
 func (t *tui) buildListRow(tube string, stats map[string]string) string {
@@ -345,7 +351,6 @@ func (t *tui) update() {
 }
 
 func (t *tui) updatePeekView() {
-	// Peek at the selected tube
 	t.peekView.Clear()
 	currentTube, err := t.getCurrentTube()
 	if err != nil {
@@ -408,8 +413,8 @@ func (t *tui) getCurrentTube() (string, error) {
 }
 
 func (t *tui) closeOverlays() {
-	for _, pageName := range []string{"help", "put", "delete-job", "delete-all", "pause", "connect"} {
-		if t.pages.HasPage(pageName) {
+	for _, pageName := range t.pages.GetPageNames(false) {
+		if pageName != "main" {
 			t.pages.RemovePage(pageName)
 		}
 	}
@@ -461,8 +466,16 @@ func (t *tui) handlePut() {
 	}
 
 	form := tview.NewForm()
-	priorityField := tview.NewInputField().SetLabel("Priority").SetFieldWidth(10).SetText("1").SetAcceptanceFunc(tview.InputFieldInteger)
-	delayField := tview.NewInputField().SetLabel("Delay (seconds)").SetFieldWidth(10).SetText("0").SetAcceptanceFunc(tview.InputFieldInteger)
+	priorityField := tview.NewInputField().
+		SetLabel("Priority").
+		SetFieldWidth(10).
+		SetText("1").
+		SetAcceptanceFunc(tview.InputFieldInteger)
+	delayField := tview.NewInputField().
+		SetLabel("Delay (seconds)").
+		SetFieldWidth(10).
+		SetText("0").
+		SetAcceptanceFunc(tview.InputFieldInteger)
 	bodyArea := tview.NewTextArea().SetLabel("Body")
 
 	form.AddFormItem(priorityField).
@@ -485,6 +498,7 @@ func (t *tui) handlePut() {
 		if delayStr == "" {
 			delayStr = "0"
 		}
+
 		delaySeconds, err := strconv.ParseUint(delayStr, 10, 64)
 		if err != nil {
 			t.outputError(fmt.Errorf("delay must be a number"))
