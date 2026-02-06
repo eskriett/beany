@@ -168,13 +168,7 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 
 	// Add tube name cell
 	namePadding := strings.Repeat(" ", t.maxTubeNameLength-len(tube))
-	tubeNameColour := ""
-	if !tubeCurrentlyActive(stats) {
-		tubeNameColour = "darkgray"
-	}
-	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
-		tubeNameColour = "lightblue"
-	}
+	tubeNameColour := getTubeColour(stats)
 	fmt.Fprintf(&rowBuilder, "[%s:]%s%s[-:-:-] ", tubeNameColour, tube, namePadding)
 
 	// Add state cells
@@ -182,7 +176,7 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 	for i, state := range []string{"ready", "delayed", "buried"} {
 		value := stats[fmt.Sprintf("current-jobs-%s", state)]
 		if cellWidths[i] > 0 {
-			colourName := getStateColourName(state)
+			colourName := getStateColour(state)
 			// Right-align the value with padding
 			paddedValue := fmt.Sprintf("%*s ", cellWidths[i], value)
 			fmt.Fprintf(&rowBuilder, "[white:%s]%s[-:-:-]", colourName, paddedValue)
@@ -191,7 +185,7 @@ func (t *tui) buildListRow(tube string, stats map[string]string) string {
 
 	rowBuilder.WriteString(" ")
 
-	if stats["pause-time-left"] != "" && stats["pause-time-left"] != "0" {
+	if tubeCurrentlyPaused(stats) {
 		fmt.Fprintf(&rowBuilder, "[lightblue:]* PAUSED: %s *[-:-:-]", secondsToHumanReadable(stats["pause-time-left"]))
 	}
 
@@ -208,7 +202,7 @@ func tubeCurrentlyActive(stats map[string]string) bool {
 	return false
 }
 
-func getStateColourName(state string) string {
+func getStateColour(state string) string {
 	switch state {
 	case "ready":
 		return "darkgreen"
@@ -219,6 +213,20 @@ func getStateColourName(state string) string {
 	default:
 		return "white"
 	}
+}
+
+func getTubeColour(stats map[string]string) string {
+	if !tubeCurrentlyActive(stats) {
+		return "darkgray"
+	}
+	if tubeCurrentlyPaused(stats) {
+		return "lightblue"
+	}
+	return ""
+}
+
+func tubeCurrentlyPaused(stats map[string]string) bool {
+	return stats["pause-time-left"] != "" && stats["pause-time-left"] != "0"
 }
 
 func (t *tui) getCellWidths(stats map[string]string) []int {
@@ -364,7 +372,7 @@ func (t *tui) updatePeekView() {
 		id, body, err := t.server.Peek(state, currentTube)
 		if err == nil {
 			peekedSomething = true
-			colour := getStateColourName(state)
+			colour := getStateColour(state)
 			peekContent.WriteString(fmt.Sprintf("[white:%s:b]Peek %s[-:-:-]\n", colour, state))
 			peekContent.WriteString(fmt.Sprintf("ID: %v\n", id))
 			peekContent.WriteString(string(body) + "\n")
