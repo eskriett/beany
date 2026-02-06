@@ -17,11 +17,12 @@ Beany is an interactive command-line and TUI client for
 
 ### TUI mode
 
-* Histogram view showing live counts in all tubes
-* Automatically peek the current tube
-* Quickly run commands on the current tube, or across all tubes
+![Screenshot](/screenshots/beanytui.png)
 
-TODO add a TUI screenshot without any private info in
+* Logarithmic histogram view showing live counts in all tubes
+* Automatically peek the current tube
+* Durations converted to human-readable times
+* Quickly run commands on the current tube, or across all tubes
 
 ## Installation
 
