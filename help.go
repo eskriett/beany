@@ -87,4 +87,29 @@ This command is available via the 'st' alias`
 This command is available via the 'ut' alias`
 
 	helpVersion = `Displays beany version information`
+
+	helpTUI = `In TUI mode, the screen is divided into three panes:
+
+	- The left pane shows the tubes, with histograms of the number of ready, delayed and buried jobs in each tube. The list can be navigated with the arrow keys. Many commands act on the current tube - this means the one currently selected in this list.
+	- The right pane shows the first job in each state on the currently selected tube. It also shows the most recent info or error message.
+	- The footer shows the available commands.
+
+The available commands are:
+
+	- Help: Show this help message. This can also be opened using ?.
+	- Put: Open a form allowing a new job to be put onto the selected tube, with configurable priority (lower is sooner), delay (in seconds, for which the job will remain in the delayed state before becoming ready), and body.
+	- DeleteJob: Open a form allowing a single job to be deleted from any tube, by specifying its ID.
+	- DeleteAllJobs: Open a modal allowing all ready, delayed or buried jobs to be deleted from the current tube.
+	- KickJobs: Immediately kick all buried jobs on the current tube back to ready. If there are no buried jobs, kick all delayed jobs back to ready.
+	- KickAllTubes: Immediately kick all buried jobs on all tubes back to ready. Delayed jobs are not affected, and must be kicked using KickJobs.
+	- PauseTube: Open a modal where the current tube can be paused for one hour, or unpaused. Jobs in a paused tube can't be reserved, and delayed jobs' delay timers do not decrement. An already-paused tube can be paused again, which extends the remaining pause period to one hour.
+	- PauseScreen: Pause the screen, so no more updates are shown. Pausing the screen allows data to be copied to the clipboard.
+		- UnpauseScreen: When paused, the screen can be unpaused with the same hotkey.
+	- Disconnect: Disconnect from the currently connected beanstalk server.
+		- Connect: When disconnected, the same hotkey opens a modal allowing a beanstalk server to be connected to by specifying its hostname and port. By default, beany will attempt to connect to localhost:11300.
+	- Exit: Exit the application Pressing q also exits.
+
+Each modal and form can be closed by pressing the hotkey which opened it. All overlays can be closed by pressing Escape.
+
+More commands are available when running beany in CLI mode.`
 )

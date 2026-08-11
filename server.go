@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kr/beanstalk"
+	"github.com/beanstalkd/go-beanstalk"
 )
 
 type server struct {
@@ -109,6 +109,10 @@ func (s *server) DeleteAll(state, name string) (int, error) {
 			id, _, err = tube.PeekDelayed()
 		}
 		if err != nil {
+			if errors.Is(err, beanstalk.ErrNotFound) {
+				// Treat the tube being empty as success
+				return n, nil
+			}
 			return n, err
 		}
 
@@ -214,12 +218,12 @@ func (s *server) PeekJob(id uint64) ([]byte, error) {
 	}
 }
 
-func (s *server) Put(body []byte, name string) (uint64, error) {
+func (s *server) Put(body []byte, name string, priority uint32, delay time.Duration) (uint64, error) {
 	tube := beanstalk.Tube{
 		Conn: s.bs,
 		Name: name,
 	}
-	return tube.Put(body, 1, 0, 180*time.Second)
+	return tube.Put(body, priority, delay, 180*time.Second)
 }
 
 func (s *server) Stats() (map[string]string, error) {
@@ -256,4 +260,16 @@ func (s *server) UseTube(name string) {
 		Name: name,
 	}
 	s.bs.Tube = newTube
+}
+
+func (s *server) Pause(name string, duration time.Duration) error {
+	tube := beanstalk.Tube{
+		Conn: s.bs,
+		Name: name,
+	}
+	return tube.Pause(duration)
+}
+
+func (s *server) Unpause(name string) error {
+	return s.Pause(name, 0)
 }
